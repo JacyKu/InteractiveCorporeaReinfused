@@ -27,7 +27,7 @@ public class ClientRegistryHandler {
   public static void registerKeys(RegisterKeyMappingsEvent event) {
     event.register(RequestingHaloInterfaceHandler.KEY_BINDING);
     event.register(RequestingHaloInterface.KEY_SEARCH);
-    event.register(RequestingHaloInterface.KEY_SORT_BY_AMOUNT);
+    event.register(RequestingHaloInterface.KEY_REQUEST_UPDATE);
   }
 
   @SubscribeEvent

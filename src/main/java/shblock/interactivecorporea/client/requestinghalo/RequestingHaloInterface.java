@@ -68,13 +68,6 @@ public class RequestingHaloInterface {
       KeyConflictContext.IN_GAME,
       InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_U),
       IC.KEY_CATEGORY
-    );
-
-    public static final KeyMapping KEY_SORT_BY_AMOUNT = new KeyMapping(
-      "key." + IC.MODID + ".requesting_halo.sort_by_amount",
-      KeyConflictContext.IN_GAME,
-      InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_B),
-      IC.KEY_CATEGORY
   );
 
   private final CISlotPointer slot;
@@ -125,10 +118,6 @@ public class RequestingHaloInterface {
 
     searchBar.setSearchString(ItemNBTHelper.getString(haloItem, PREFIX_SEARCH_STRING, ""));
     searchBar.moveToEnd();
-
-    if (isModuleInstalled(HaloModule.AMOUNT_SORT)) {
-      itemList.setSortMode(SortMode.AMOUNT); //TODO: change this when adding new sort modes
-    }
 
     craftingInterface = new HaloCraftingInterface(slot, haloItem);
     craftingInterface.setTargetRotation(Math.toRadians(INITIAL_ROTATION));
@@ -764,11 +753,10 @@ public class RequestingHaloInterface {
 //        }
       }
     }
-    if (!isModuleInstalled(HaloModule.UPDATE)) {
-      if (KEY_REQUEST_UPDATE.consumeClick()) {
-        requestItemListUpdate();
-        return;
-      }
+    if (KEY_REQUEST_UPDATE.consumeClick()) {
+      itemList.sortByAmount();
+      playSound(ModSounds.haloListUpdate, 1F);
+      return;
     }
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         if (searchBar.isSearching()) {

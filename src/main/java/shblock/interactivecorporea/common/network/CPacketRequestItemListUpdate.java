@@ -7,7 +7,6 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.common.corporea.CorporeaUtil;
-import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.tile.TileItemQuantizationDevice;
 import shblock.interactivecorporea.common.util.CISlotPointer;
@@ -100,7 +99,7 @@ public class CPacketRequestItemListUpdate {
         player.getId(),
         rotationOffset,
         getRemoteListHeight(player, halo),
-        ItemRequestingHalo.isModuleInstalled(halo, HaloModule.AMOUNT_SORT),
+        true,
         result
     ));
   }

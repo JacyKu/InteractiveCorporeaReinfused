@@ -16,7 +16,7 @@ public class AnimatedCorporeaItemList {
 
   private int height = 5;
   private String filter = "";
-  private SortMode sortMode = SortMode.DICT;
+  private SortMode sortMode = SortMode.AMOUNT;
   private List<ItemStack> stackList;
   private final List<AnimatedItemStack> animatedList = new ArrayList<>();
   private final Map<Integer, AnimatedItemStack> requestIdMap = new HashMap<>();

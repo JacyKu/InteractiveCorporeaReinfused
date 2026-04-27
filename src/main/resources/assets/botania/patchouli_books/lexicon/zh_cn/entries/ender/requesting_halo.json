@@ -68,12 +68,6 @@
       "item": "botania:hourglass",
       "title": "interactive_corporea.page.requestingHalo.module.update.title",
       "text": "interactive_corporea.page.requestingHalo.module.update"
-    },
-    {
-      "type": "spotlight",
-      "item": "botania:corporea_spark_master",
-      "title": "interactive_corporea.page.requestingHalo.module.amount_sort.title",
-      "text": "interactive_corporea.page.requestingHalo.module.amount_sort"
     }
   ]
 }
