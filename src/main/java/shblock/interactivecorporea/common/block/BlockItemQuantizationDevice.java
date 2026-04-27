@@ -1,32 +1,32 @@
 package shblock.interactivecorporea.common.block;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.IBlockReader;
-import net.minecraft.world.World;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.SoundType;
 import shblock.interactivecorporea.common.tile.TileItemQuantizationDevice;
+import shblock.interactivecorporea.common.tile.ModTiles;
 
-import javax.annotation.Nullable;
-
-public class BlockItemQuantizationDevice extends Block {
+public class BlockItemQuantizationDevice extends Block implements EntityBlock {
   public static final String NAME = "item_quantization_device";
 
   public BlockItemQuantizationDevice() {
-    super(Properties.create(Material.IRON).hardnessAndResistance(5.5F).sound(SoundType.METAL).notSolid());
+    super(Properties.of().strength(5.5F).sound(SoundType.METAL).noOcclusion());
   }
 
   @Override
-  public boolean hasComparatorInputOverride(BlockState state) {
+  public boolean hasAnalogOutputSignal(BlockState state) {
     return true;
   }
 
   @Override
-  public int getComparatorInputOverride(BlockState blockState, World world, BlockPos pos) {
-    TileEntity te = world.getTileEntity(pos);
+  public int getAnalogOutputSignal(BlockState blockState, Level world, BlockPos pos) {
+    BlockEntity te = world.getBlockEntity(pos);
     if (te instanceof TileItemQuantizationDevice) {
       TileItemQuantizationDevice iqd = (TileItemQuantizationDevice) te;
       return iqd.getComparatorLevel();
@@ -35,13 +35,16 @@ public class BlockItemQuantizationDevice extends Block {
   }
 
   @Override
-  public boolean hasTileEntity(BlockState state) {
-    return true;
+  public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
+    return new TileItemQuantizationDevice(pos, state);
   }
 
-  @Nullable
   @Override
-  public TileEntity createTileEntity(BlockState state, IBlockReader world) {
-    return new TileItemQuantizationDevice();
+  @SuppressWarnings("unchecked")
+  public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+    if (!level.isClientSide && type == ModTiles.itemQuantizationDevice) {
+      return (lvl, pos, blockState, blockEntity) -> TileItemQuantizationDevice.serverTick(lvl, pos, blockState, (TileItemQuantizationDevice) blockEntity);
+    }
+    return null;
   }
 }

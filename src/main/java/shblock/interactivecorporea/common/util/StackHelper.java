@@ -1,12 +1,12 @@
 package shblock.interactivecorporea.common.util;
 
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 import vazkii.botania.common.core.helper.ItemNBTHelper;
 
 public class StackHelper {
   public static boolean equalItemAndTag(ItemStack a, ItemStack b) {
-    return !b.isEmpty() && !b.isEmpty() && a.isItemEqual(b) && ItemNBTHelper.matchTag(b.getTag(), a.getTag());
+    return !a.isEmpty() && !b.isEmpty() && ItemStack.isSameItemSameTags(a, b) && ItemNBTHelper.matchTag(b.getTag(), a.getTag());
   }
 
   /**

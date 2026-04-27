@@ -1,6 +1,6 @@
 package shblock.interactivecorporea.common.util;
 
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
 

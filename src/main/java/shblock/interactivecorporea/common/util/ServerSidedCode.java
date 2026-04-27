@@ -1,14 +1,16 @@
 package shblock.interactivecorporea.common.util;
 
-import net.minecraft.util.RegistryKey;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.server.ServerLifecycleHooks;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.server.ServerLifecycleHooks;
 
 import javax.annotation.Nullable;
 
 public class ServerSidedCode {
   @Nullable
-  public static World getWorldFromName(RegistryKey<World> key) {
-    return ServerLifecycleHooks.getCurrentServer().getWorld(key);
+  public static Level getWorldFromName(ResourceKey<Level> key) {
+    MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+    return server == null ? null : server.getLevel(key);
   }
 }

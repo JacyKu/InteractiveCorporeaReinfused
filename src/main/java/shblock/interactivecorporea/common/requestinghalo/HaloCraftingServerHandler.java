@@ -1,6 +1,6 @@
 package shblock.interactivecorporea.common.requestinghalo;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -25,13 +25,13 @@ public class HaloCraftingServerHandler {
 //    private final double rotation;
     private final Vector3[] slotPositions = new Vector3[9];
 
-    private final ServerPlayerEntity player;
+    private final ServerPlayer player;
     private final CISlotPointer haloSlot;
     private final boolean doMagnate;
 
     private int progress = 0;
 
-    public ServerCraftingInstance(Vector3 centerSlotPos, double rotation, double scale, ServerPlayerEntity player, CISlotPointer haloSlot, boolean doMagnate) {
+    public ServerCraftingInstance(Vector3 centerSlotPos, double rotation, double scale, ServerPlayer player, CISlotPointer haloSlot, boolean doMagnate) {
 //      this.centerSlotPos = centerSlotPos;
 //      this.rotation = rotation;
       for (int i = 0; i < 9; i++) {

@@ -1,7 +1,7 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.NetworkHelper;
 
@@ -16,14 +16,14 @@ public class CPacketDoCraft {
     this.requestId = requestId;
   }
 
-  public static CPacketDoCraft decode(PacketBuffer buf) {
+  public static CPacketDoCraft decode(FriendlyByteBuf buf) {
     return new CPacketDoCraft(
         NetworkHelper.readCISlotPointer(buf),
         buf.readInt()
     );
   }
 
-  public void encode(PacketBuffer buf) {
+  public void encode(FriendlyByteBuf buf) {
     NetworkHelper.writeCISlotPointer(buf, haloSlot);
     buf.writeInt(requestId);
   }

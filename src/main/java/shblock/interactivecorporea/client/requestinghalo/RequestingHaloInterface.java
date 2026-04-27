@@ -1,20 +1,23 @@
 package shblock.interactivecorporea.client.requestinghalo;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.BufferBuilder;
 import it.unimi.dsi.fastutil.ints.Int2IntFunction;
-import net.minecraft.client.MainWindow;
+import com.mojang.blaze3d.platform.Window;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.*;
-import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.client.util.InputMappings;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.particles.RedstoneParticleData;
-import net.minecraft.util.Hand;
-import net.minecraft.util.SoundCategory;
-import net.minecraft.util.SoundEvent;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3d;
@@ -51,19 +54,26 @@ import static org.lwjgl.glfw.GLFW.*;
 @SuppressWarnings("ConstantConditions")
 public class RequestingHaloInterface {
   private static final Minecraft mc = Minecraft.getInstance();
-  private static final IRenderTypeBuffer.Impl TEXT_BUFFERS = IRenderTypeBuffer.getImpl(new BufferBuilder(64));
+  private static final MultiBufferSource.BufferSource TEXT_BUFFERS = MultiBufferSource.immediate(new BufferBuilder(64));
 
-  public static final KeyBinding KEY_SEARCH = new KeyBinding(
+  public static final KeyMapping KEY_SEARCH = new KeyMapping(
       "key." + IC.MODID + ".requesting_halo.search",
       KeyConflictContext.IN_GAME,
-      InputMappings.Type.KEYSYM.getOrMakeInput(GLFW_KEY_TAB),
+      InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_TAB),
       IC.KEY_CATEGORY
   );
 
-  public static final KeyBinding KEY_REQUEST_UPDATE = new KeyBinding(
+  public static final KeyMapping KEY_REQUEST_UPDATE = new KeyMapping(
       "key." + IC.MODID + ".requesting_halo.request_update",
       KeyConflictContext.IN_GAME,
-      InputMappings.Type.KEYSYM.getOrMakeInput(GLFW_KEY_U),
+      InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_U),
+      IC.KEY_CATEGORY
+    );
+
+    public static final KeyMapping KEY_SORT_BY_AMOUNT = new KeyMapping(
+      "key." + IC.MODID + ".requesting_halo.sort_by_amount",
+      KeyConflictContext.IN_GAME,
+      InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_B),
       IC.KEY_CATEGORY
   );
 
@@ -108,7 +118,7 @@ public class RequestingHaloInterface {
   public RequestingHaloInterface(CISlotPointer slot) {
     this.slot = slot;
     this.haloItem = slot.getStack(mc.player);
-    this.rotationOffset = mc.player.rotationYaw - INITIAL_ROTATION;
+    this.rotationOffset = mc.player.getYRot() - INITIAL_ROTATION;
     searchBar.setUpdateCallback(this::updateSearch);
 
     itemList = new AnimatedCorporeaItemList(ItemNBTHelper.getInt(haloItem, PREFIX_LIST_HEIGHT, 5));
@@ -144,7 +154,7 @@ public class RequestingHaloInterface {
     return ItemRequestingHalo.isModuleInstalled(haloItem, module);
   }
 
-  public boolean render(MatrixStack ms, double pt) {
+  public boolean render(MatrixStack ms, Camera info, double pt) {
     if (!updateOpenClose()) {
       close();
       return false;
@@ -164,17 +174,16 @@ public class RequestingHaloInterface {
 
     handleRotation();
 
-    ActiveRenderInfo info = mc.getRenderManager().info;
-    IRenderTypeBuffer.Impl buffers = mc.getRenderTypeBuffers().getBufferSource();
+    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
 
-    double renderPosX = info.getProjectedView().getX();
-    double renderPosY = info.getProjectedView().getY();
-    double renderPosZ = info.getProjectedView().getZ();
+    double renderPosX = info.getPosition().x;
+    double renderPosY = info.getPosition().y;
+    double renderPosZ = info.getPosition().z;
 
     ms.push();
 
-    PlayerEntity player = mc.player;
-    Vector3d eyePos = player.getEyePosition((float) pt);
+    Player player = mc.player;
+    Vector3d eyePos = new Vector3d(player.getEyePosition((float) pt));
 
     ms.translate(eyePos.x - renderPosX, eyePos.y - renderPosY, eyePos.z - renderPosZ);
 
@@ -254,7 +263,7 @@ public class RequestingHaloInterface {
       selectionBox.setTarget(null);
     }
     ms.pop();
-    TEXT_BUFFERS.finish();
+    TEXT_BUFFERS.endBatch();
 
     selectionBox.update();
 
@@ -326,14 +335,12 @@ public class RequestingHaloInterface {
     }
   }
 
-  public void renderHud(MatrixStack ms, float pt, MainWindow window) {
+  public void renderHud(GuiGraphics gui, float pt, Window window) {
     if (isModuleInstalled(HaloModule.HUD)) {
-      ms.push();
       AnimatedItemStack aniStack = selectionBox.getTarget();
       if (aniStack != null) {
-        aniStack.renderHud(ms, pt, window);
+        aniStack.renderHud(gui, pt, window);
       }
-      ms.pop();
     }
   }
 
@@ -349,7 +356,7 @@ public class RequestingHaloInterface {
       }
     }
 
-    Vector3 lookDir = new Vector3(Vector3d.fromPitchYaw(mc.player.rotationPitch, mc.player.rotationYaw));
+    Vector3 lookDir = new Vector3(Vector3d.fromPitchYaw(mc.player.getXRot(), mc.player.getYRot()));
     bottomIntersect = MathUtil.rayPlaneIntersection(
         new Ray3(new Vector3(0, 0, 0), lookDir),
         new Ray3(new Vector3(0, -height, 0), new Vector3(0, 1, 0))
@@ -358,17 +365,17 @@ public class RequestingHaloInterface {
       if (bottomIntersect != null && new Vector3(bottomIntersect.x, 0, bottomIntersect.z).mag() < radius * .94) {
         shouldPickedItemFadeWhenLookUp = true;
       }
-      if (shouldPickedItemFadeWhenLookUp && Math.tan(Math.toRadians(mc.player.rotationPitch)) * radius < height - .05) {
+      if (shouldPickedItemFadeWhenLookUp && Math.tan(Math.toRadians(mc.player.getXRot())) * radius < height - .05) {
         pickedItem.fadeOut();
         shouldPickedItemFadeWhenLookUp = false;
       }
 
       if (bottomIntersect != null && new Vector3(bottomIntersect.x, 0, bottomIntersect.z).mag() < radius) {
         pickedItem.setTargetPosition(bottomIntersect.add(0, .05, 0));
-        pickedItem.setTargetRotationDegrees(-90, -mc.player.rotationYaw + 180);
+        pickedItem.setTargetRotationDegrees(-90, -mc.player.getYRot() + 180);
       } else {
         pickedItem.setTargetPosition(lookDir.multiply(radius * .8));
-        pickedItem.setTargetRotationDegrees(-mc.player.rotationPitch, -mc.player.rotationYaw + 180);
+        pickedItem.setTargetRotationDegrees(-mc.player.getXRot(), -mc.player.getYRot() + 180);
       }
       pickedItem.tick();
     }
@@ -390,13 +397,13 @@ public class RequestingHaloInterface {
     return (cols - 1) * itemRotSpacing;
   }
 
-  private double prevPlayerRot = mc.player.rotationYaw;
+  private double prevPlayerRot = mc.player.getYRot();
   private double rotationToAdd = 0;
   private double rotationAddingSpeed = 0;
   public void handleRotation() {
     lastRelativeRotation = relativeRotation;
 
-    double rot = mc.player.rotationYaw;
+    double rot = mc.player.getYRot();
     double ra = rot - prevPlayerRot;
     double rb = rot - prevPlayerRot;
     if (Math.abs(ra) < Math.abs(rb)) {
@@ -423,7 +430,7 @@ public class RequestingHaloInterface {
       return;
     }
 
-    if (Math.abs(Math.toRadians(mc.player.rotationPitch)) > Math.atan(height / radius)) {
+    if (Math.abs(Math.toRadians(mc.player.getXRot())) > Math.atan(height / radius)) {
       lastLimitRotation = false;
       return;
     }
@@ -438,7 +445,7 @@ public class RequestingHaloInterface {
     double start = (-degreeItemRotSpacing / 2 - excessSpacing);
     double distToStart = relativeRotation - start;
     if (distToStart < 0) {
-      mc.player.rotationYaw = (float) (mc.player.rotationYaw - (distToStart * correctionSpd - minSpd) * RenderTick.delta);
+      mc.player.setYRot((float) (mc.player.getYRot() - (distToStart * correctionSpd - minSpd) * RenderTick.delta));
       spawnParticleLineOnHalo(start);
       limited = true;
     }
@@ -446,7 +453,7 @@ public class RequestingHaloInterface {
     double end = (Math.toDegrees(getItemListDisplayWidth()) + degreeItemRotSpacing / 2 + excessSpacing);
     double distToEnd = relativeRotation - end;
     if (distToEnd > 0) {
-      mc.player.rotationYaw = (float) (mc.player.rotationYaw - (distToEnd * correctionSpd + minSpd) * RenderTick.delta);
+      mc.player.setYRot((float) (mc.player.getYRot() - (distToEnd * correctionSpd + minSpd) * RenderTick.delta));
       spawnParticleLineOnHalo(end);
       limited = true;
     }
@@ -468,7 +475,7 @@ public class RequestingHaloInterface {
     int cnt = 0;
     for (int i = 0; i < (int) (particleSpawnTimer / .1); i++) {
       Vector3d pos = mid.add(0, (random.nextDouble() * 2 - 1) * height, 0);
-      mc.world.addParticle(new RedstoneParticleData(1F, 0F, 0F, 1F), pos.x, pos.y, pos.z, 0, 0, 0);
+      mc.level.addParticle(new DustParticleOptions(new org.joml.Vector3f(1F, 0F, 0F), 1F), pos.x, pos.y, pos.z, 0, 0, 0);
       cnt++;
     }
     particleSpawnTimer -= cnt * .1;
@@ -481,7 +488,7 @@ public class RequestingHaloInterface {
   private Vec2d calcLookingPos(double radius, double spacing, double rotSpacing) {
     return new Vec2d(
         (Math.toRadians(relativeRotation) / rotSpacing),
-        (Math.tan(Math.toRadians(mc.player.rotationPitch)) * radius / spacing) + (itemList.getHeight() - 1) / 2F
+        (Math.tan(Math.toRadians(mc.player.getXRot())) * radius / spacing) + (itemList.getHeight() - 1) / 2F
     );
   }
 
@@ -550,9 +557,7 @@ public class RequestingHaloInterface {
   }
 
   private static void playSwingAnimation() {
-    mc.player.swingProgressInt = -1;
-    mc.player.isSwingInProgress = true;
-    mc.player.swingingHand = Hand.MAIN_HAND;
+    mc.player.swing(InteractionHand.MAIN_HAND);
   }
 
   public boolean requestItem() {
@@ -571,10 +576,10 @@ public class RequestingHaloInterface {
     }
     ItemStack reqStack = stack.copy();
     reqStack.setCount(requestCnt);
-    PlayerEntity player = mc.player;
+    Player player = mc.player;
     double rot = Math.toRadians(-rotationOffset - relativeRotation);
     Vector3 normal = new Vector3(Math.sin(rot) * itemZOffset * .9, 0, Math.cos(rot) * itemZOffset * .9);
-    Vector3 pos = normal.add(player.getPosX(), player.getPosYEye() - Math.tan(Math.toRadians(mc.player.rotationPitch)) * radius, player.getPosZ());
+    Vector3 pos = normal.add(player.getX(), player.getEyeY() - Math.tan(Math.toRadians(mc.player.getXRot())) * radius, player.getZ());
     ModPacketHandler.sendToServer(new CPacketRequestItem(slot, reqStack, pos, normal, itemList.onRequest(aniStack)));
     playSwingAnimation();
     selectionBox.playRequestAnimation();
@@ -607,10 +612,10 @@ public class RequestingHaloInterface {
       pickedItem = null;
     } else {
       HaloPickedItem newPickedItem = null;
-      if (mc.currentScreen == null) {
+      if (mc.screen == null) {
         if (selectionBox.getTarget() != null) {
           double rot = Math.toRadians(-rotationOffset - relativeRotation);
-          double pitch = Math.toRadians(mc.player.rotationPitch);
+          double pitch = Math.toRadians(mc.player.getXRot());
           Vector3 pos = new Vector3(
               Math.sin(rot) * itemZOffset,
               -Math.tan(pitch) * radius,
@@ -621,13 +626,13 @@ public class RequestingHaloInterface {
         } else {
           CraftingInterfaceSlot slot = craftingInterface.getPointingSlot();
           if (slot != null && !slot.getShadowStack().isEmpty() && bottomIntersect != null) {
-            newPickedItem = new HaloPickedItem(slot.getShadowStack(), bottomIntersect.add(0, .05, 0), -Math.PI / 4, Math.toRadians(-mc.player.rotationYaw + 180));
+            newPickedItem = new HaloPickedItem(slot.getShadowStack(), bottomIntersect.add(0, .05, 0), -Math.PI / 4, Math.toRadians(-mc.player.getYRot() + 180));
           }
         }
       } else {
         ItemStack stackUnderMouse = RequestingHaloInterfaceHandler.getUnderMouseItemStack();
         if (!stackUnderMouse.isEmpty()) {
-          newPickedItem = new HaloPickedItem(stackUnderMouse, new Vector3(0, 0, 0), Math.toRadians(-mc.player.rotationPitch), Math.toRadians(-mc.player.rotationYaw + 180));
+          newPickedItem = new HaloPickedItem(stackUnderMouse, new Vector3(0, 0, 0), Math.toRadians(-mc.player.getXRot()), Math.toRadians(-mc.player.getYRot() + 180));
         }
       }
 
@@ -654,7 +659,7 @@ public class RequestingHaloInterface {
     if (action == GLFW_PRESS) {
       switch (button) {
         case GLFW_MOUSE_BUTTON_LEFT:
-          if (mc.currentScreen != null) return false;
+          if (mc.screen != null) return false;
           if (requestItem())
             return true;
           if (craftingInterface != null) {
@@ -665,7 +670,7 @@ public class RequestingHaloInterface {
           }
           break;
         case GLFW_MOUSE_BUTTON_RIGHT:
-          if (mc.currentScreen != null) return false;
+          if (mc.screen != null) return false;
           if (craftingInterface != null) {
             if (KeyboardHelper.hasShiftDown()) {
               if (craftingInterface != null) {
@@ -745,9 +750,9 @@ public class RequestingHaloInterface {
   public void onKeyEvent(int key, int scanCode, int action, int modifiers) {
     if (isOpenClose()) return;
 
-    if (mc.currentScreen == null) {
+    if (mc.screen == null) {
     if (isModuleInstalled(HaloModule.SEARCH)) {
-      if (KEY_SEARCH.isPressed()) {
+      if (KEY_SEARCH.consumeClick()) {
 //        if (KeyboardHelper.hasShiftDown()) {
 //          if (craftingInterface != null) {
 //            craftingInterface.tryOpenJei();
@@ -760,7 +765,7 @@ public class RequestingHaloInterface {
       }
     }
     if (!isModuleInstalled(HaloModule.UPDATE)) {
-      if (KEY_REQUEST_UPDATE.isPressed()) {
+      if (KEY_REQUEST_UPDATE.consumeClick()) {
         requestItemListUpdate();
         return;
       }
@@ -809,8 +814,8 @@ public class RequestingHaloInterface {
 
   public boolean shouldCancelKeyEvent(int key, int scanCode) {
     if (isOpenClose()) return false;
-    if (!searchBar.isSearching() && RequestingHaloInterfaceHandler.KEY_BINDING.matchesKey(key, scanCode)) return false;
-    if (KEY_SEARCH.matchesKey(key, scanCode))
+    if (!searchBar.isSearching() && RequestingHaloInterfaceHandler.KEY_BINDING.matches(key, scanCode)) return false;
+    if (KEY_SEARCH.matches(key, scanCode))
       return false;
     switch (key) {
       case GLFW_KEY_BACKSPACE:
@@ -861,9 +866,9 @@ public class RequestingHaloInterface {
   }
 
   public void playSound(double x, double y, double z, SoundEvent sound, float volume, float pitch) {
-    if (mc.world != null) {
-      ClientWorld world = mc.world;
-      world.playSound(x, y, z, sound, SoundCategory.PLAYERS, volume, pitch, false);
+    if (mc.level != null) {
+      ClientLevel world = mc.level;
+      world.playLocalSound(x, y, z, sound, SoundSource.PLAYERS, volume, pitch, false);
     }
   }
 
@@ -872,7 +877,7 @@ public class RequestingHaloInterface {
   }
 
   public void playSound(SoundEvent sound, float volume, float pitch) {
-    playSound(mc.player.getPosX(), mc.player.getPosY(), mc.player.getPosZ(), sound, volume, pitch);
+    playSound(mc.player.getX(), mc.player.getY(), mc.player.getZ(), sound, volume, pitch);
   }
 
   public void playSound(SoundEvent sound, float pitch) {
@@ -881,5 +886,26 @@ public class RequestingHaloInterface {
 
   public HaloCraftingInterface getCraftingInterface() {
     return craftingInterface;
+  }
+
+  public double getRotationOffset() {
+    return rotationOffset;
+  }
+
+  public double getRelativeRotation() {
+    return relativeRotation;
+  }
+
+  public int getListHeight() {
+    return itemList.getHeight();
+  }
+
+  public String getSearchString() {
+    return searchBar.getSearchString();
+  }
+
+  public Vec2d getSelectionTargetPos() {
+    AnimatedItemStack target = selectionBox.getTarget();
+    return target == null ? null : target.getPos();
   }
 }

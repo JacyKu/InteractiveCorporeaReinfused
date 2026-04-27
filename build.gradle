@@ -1,201 +1,145 @@
-buildscript {
-    repositories {
-        maven { url = 'https://maven.minecraftforge.net' }
-        mavenCentral()
-    }
-    dependencies {
-        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
-        classpath 'org.spongepowered:mixingradle:0.7.+'
-    }
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id 'net.neoforged.moddev.legacyforge' version '2.0.78'
 }
-apply plugin: 'net.minecraftforge.gradle'
-// Only edit below this line, the above code adds and enables the necessary things for Forge to be setup.
-apply plugin: 'eclipse'
-apply plugin: 'maven-publish'
-apply plugin: 'org.spongepowered.mixin'
 
 version = '1.4'
-group = 'shblock.interactivecorporea' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
-archivesBaseName = 'interactive_corporea'
+group = 'shblock.interactivecorporea'
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(8) // Mojang ships Java 8 to end users, so your mod should target Java 8.
+base {
+    archivesName = 'interactive_corporea'
+}
 
-println('Java: ' + System.getProperty('java.version') + ' JVM: ' + System.getProperty('java.vm.version') + '(' + System.getProperty('java.vendor') + ') Arch: ' + System.getProperty('os.arch'))
-minecraft {
-    // The mappings can be changed at any time, and must be in the following format.
-    // Channel:   Version:
-    // snapshot   YYYYMMDD   Snapshot are built nightly.
-    // stable     #          Stables are built at the discretion of the MCP team.
-    // official   MCVersion  Official field/method names from Mojang mapping files
-    //
-    // You must be aware of the Mojang license when using the 'official' mappings.
-    // See more information here: https://github.com/MinecraftForge/MCPConfig/blob/master/Mojang.md
-    //
-    // Use non-default mappings at your own risk. they may not always work.
-    // Simply re-run your setup task after changing the mappings to update your workspace.
-    //mappings channel: 'official', version: '1.16.5'
-    mappings channel: 'snapshot', version: '20201028-1.16.3'
-    // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
-    
-     accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+java.withSourcesJar()
 
-    // Default run configurations.
-    // These can be tweaked, removed, or duplicated as needed.
+legacyForge {
+    version = '1.20.1-47.4.10'
+    accessTransformers = [file('src/main/resources/META-INF/accesstransformer.cfg')]
+
+    parchment {
+        minecraftVersion = '1.20.1'
+        mappingsVersion = '2023.09.03'
+    }
+
     runs {
         client {
-            workingDirectory project.file('run')
+            client()
+            systemProperty('forge.logging.console.level', 'debug')
+            systemProperty('mixin.env.disableRefMap', 'true')
+        }
 
-            // Recommended logging data for a userdev environment
-            // The markers can be changed as needed.
-            // "SCAN": For mods scan.
-            // "REGISTRIES": For firing of registry events.
-            // "REGISTRYDUMP": For getting the contents of all registries.
-            property 'forge.logging.markers', 'REGISTRIES'
-
-            // Recommended logging level for the console
-            // You can set various levels here.
-            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
-            property 'forge.logging.console.level', 'debug'
-
-            property "mixin.env.disableRefMap", "true"
-
-            mods {
-                examplemod {
-                    source sourceSets.main
-                }
-            }
+        client2 {
+            client()
+            systemProperty('forge.logging.console.level', 'debug')
+            systemProperty('mixin.env.disableRefMap', 'true')
+            programArguments.addAll '-mixin.config=mixins.interactive_corporea.json'
+            programArguments.addAll '--username', 'Dev2'
         }
 
         server {
-            workingDirectory project.file('run')
-
-            // Recommended logging data for a userdev environment
-            // The markers can be changed as needed.
-            // "SCAN": For mods scan.
-            // "REGISTRIES": For firing of registry events.
-            // "REGISTRYDUMP": For getting the contents of all registries.
-            property 'forge.logging.markers', 'REGISTRIES'
-
-            // Recommended logging level for the console
-            // You can set various levels here.
-            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
-            property 'forge.logging.console.level', 'debug'
-
-            //property "mixin.env.disableRefMap", "true"
-
-            mods {
-                examplemod {
-                    source sourceSets.main
-                }
-            }
+            server()
+            systemProperty('forge.logging.console.level', 'debug')
         }
 
         data {
-            workingDirectory project.file('run')
+            data()
+            systemProperty('forge.logging.console.level', 'debug')
+            programArguments.addAll '-mixin.config=mixins.interactive_corporea.json'
+            programArguments.addAll '--mod', 'interactive_corporea', '--all'
+            programArguments.addAll '--output', file('src/generated/resources/').getAbsolutePath()
+            programArguments.addAll '--existing', file('src/main/resources/').getAbsolutePath()
+        }
 
-            // Recommended logging data for a userdev environment
-            // The markers can be changed as needed.
-            // "SCAN": For mods scan.
-            // "REGISTRIES": For firing of registry events.
-            // "REGISTRYDUMP": For getting the contents of all registries.
-            property 'forge.logging.markers', 'REGISTRIES'
+        configureEach {
+            gameDirectory = file('run/')
+            systemProperty('fml.earlyprogresswindow', 'false')
+        }
+    }
 
-            // Recommended logging level for the console
-            // You can set various levels here.
-            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
-            property 'forge.logging.console.level', 'debug'
-
-            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            args '--mod', 'examplemod', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-
-            mods {
-                examplemod {
-                    source sourceSets.main
-                }
-            }
+    mods {
+        interactive_corporea {
+            sourceSet sourceSets.main
         }
     }
 }
 
-// Include resources generated by data generators.
-sourceSets.main.resources { srcDir 'src/generated/resources' }
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+}
 
 repositories {
+    mavenCentral()
+
     maven {
-        url = "https://maven.blamejared.com"
+        name = 'Sponge / Mixin'
+        url = 'https://repo.spongepowered.org/repository/maven-public/'
     }
     maven {
-        name = "Progwml6 maven"
-        url = "https://dvs1.progwml6.com/files/maven/"
+        name = 'Jared'
+        url = 'https://maven.blamejared.com/'
     }
     maven {
-        name = "ModMaven"
-        url = "https://modmaven.dev"
+        name = 'ModMaven'
+        url = 'https://modmaven.dev'
     }
     maven {
-        name "curios"
-        url "https://maven.theillusivec4.top/"
+        name = 'C4'
+        url = 'https://maven.theillusivec4.top/'
     }
 }
 
 dependencies {
-    minecraft 'net.minecraftforge:forge:1.16.5-36.2.22'
+    modCompileOnly("vazkii.botania:Botania:${botania_version}")
+    modRuntimeOnly("vazkii.botania:Botania:${botania_version}")
 
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+    modCompileOnly("mezz.jei:jei-1.20.1-common-api:${jei_version}")
+    modRuntimeOnly("mezz.jei:jei-1.20.1-forge:${jei_version}")
 
-    //compileOnly fg.deobf("vazkii.botania:Botania:1.16.5-${botania_version}:api")
-    //runtimeOnly fg.deobf("vazkii.botania:Botania:1.16.5-${botania_version}")
-    implementation fg.deobf("vazkii.botania:Botania:1.16.5-${botania_version}")
+    modCompileOnly("top.theillusivec4.curios:curios-forge:${curios_version}:api")
+    modRuntimeOnly("top.theillusivec4.curios:curios-forge:${curios_version}")
 
-    //compileOnly fg.deobf("mezz.jei:jei-1.16.5:${jei_version}:api")
-    //runtimeOnly fg.deobf("mezz.jei:jei-1.16.5:${jei_version}")
-    implementation fg.deobf("mezz.jei:jei-1.16.5:${jei_version}")
-
-    //compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:1.16.5-${curios_version}:api")
-    //runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:1.16.5-${curios_version}")
-    implementation fg.deobf("top.theillusivec4.curios:curios-forge:1.16.5-${curios_version}")
-
-    //compileOnly fg.deobf("vazkii.patchouli:Patchouli:${patchouli_version}:api")
-    //runtimeOnly fg.deobf("vazkii.patchouli:Patchouli:${patchouli_version}")
-    implementation fg.deobf("vazkii.patchouli:Patchouli:${patchouli_version}")
-
+    modCompileOnly("vazkii.patchouli:Patchouli:${patchouli_version}")
+    modRuntimeOnly("vazkii.patchouli:Patchouli:${patchouli_version}")
 }
 
-mixin {
-    // MixinGradle Settings
-    add sourceSets.main, 'mixins.interactive_corporea.refmap.json'
-    config 'mixins.interactive_corporea.json'
-
-    debug.verbose = true
-    debug.export = true
-    dumpTargetOnFailure = true
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 17
 }
 
-// Example for how to get properties into the manifest for reading by the runtime..
-//jar {
-//    manifest {
-//        attributes([
-//            "Specification-Title": "examplemod",
-//            "Specification-Vendor": "examplemodsareus",
-//            "Specification-Version": "1", // We are version 1 of ourselves
-//            "Implementation-Title": project.name,
-//            "Implementation-Version": "${version}",
-//            "Implementation-Vendor" :"examplemodsareus",
-//            "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
-//        ])
-//    }
-//}
+processResources {
+    inputs.property 'version', project.version
 
-// Example configuration to allow publishing using the maven-publish task
-// This is the preferred method to reobfuscate your jar file
-jar.finalizedBy('reobfJar') 
-// However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing
-//publish.dependsOn('reobfJar')
+    filesMatching('META-INF/mods.toml') {
+        expand 'version': project.version
+    }
+
+    exclude '.cache'
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title': 'interactive_corporea',
+            'Specification-Vendor': 'shBLOCK',
+            'Specification-Version': '1',
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'shBLOCK',
+            'MixinConfigs': 'mixins.interactive_corporea.json'
+        ])
+    }
+
+    finalizedBy 'reobfJar'
+}
 
 publishing {
     publications {
         mavenJava(MavenPublication) {
             artifact jar
+            artifact sourcesJar
         }
     }
     repositories {

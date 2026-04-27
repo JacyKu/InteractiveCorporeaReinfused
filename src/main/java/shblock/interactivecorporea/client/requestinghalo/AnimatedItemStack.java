@@ -3,18 +3,18 @@ package shblock.interactivecorporea.client.requestinghalo;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mcp.MethodsReturnNonnullByDefault;
-import net.minecraft.client.MainWindow;
+import com.mojang.blaze3d.platform.Window;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3f;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraftforge.fml.client.gui.GuiUtils;
+import net.minecraft.network.chat.Component;
 import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.KeyboardHelper;
 import shblock.interactivecorporea.client.util.RenderTick;
@@ -27,6 +27,8 @@ import java.util.List;
 @MethodsReturnNonnullByDefault
 public class AnimatedItemStack {
   private static final Minecraft mc = Minecraft.getInstance();
+  private static final float TEXT_SHADOW_Z_OFFSET = -.25F;
+  private static final float TEXT_FOREGROUND_Z_OFFSET = -.5F;
   public Perlin noise = new Perlin();
 
   private final ItemStack stack;
@@ -107,7 +109,7 @@ public class AnimatedItemStack {
   }
 
   @SuppressWarnings("DuplicatedCode")
-  public void renderAmount(MatrixStack ms, int color, IRenderTypeBuffer.Impl buffers) {
+  public void renderAmount(MatrixStack ms, int color, MultiBufferSource.BufferSource buffers) {
     ms.push();
     float scale = (float) fade;
     ms.scale(scale, scale, scale);
@@ -138,35 +140,41 @@ public class AnimatedItemStack {
     ms.pop();
   }
 
-  protected static void renderAmountText(MatrixStack ms, String text, int color, IRenderTypeBuffer.Impl buffers) {
+  protected static void renderAmountText(MatrixStack ms, String text, int color, MultiBufferSource.BufferSource buffers) {
     int alpha = color >>> 24;
     color = (color & 0x00FFFFFF) | (int) (MathHelper.lerp(alpha / 255D, 5D, 249D)) << 24; //?????????????????
 
     ms.push();
 
-    FontRenderer font = mc.fontRenderer;
+    Font font = mc.font;
 
     ms.rotate(new Quaternion(Vector3f.XP, 180, true));
     ms.rotate(new Quaternion(Vector3f.YP, 180, true));
-    double w = font.getCharacterManager().func_238350_a_(text);
+    double w = font.width(text);
     ms.translate(-w, 0, 0);
-
-    Matrix4f mat = ms.getLast().getMatrix();
 
     RenderSystem.enableDepthTest();
 
     int shadeColor = (color & 16579836) >> 2 | color & -16777216;
-    font.renderString(text, 1, 1, shadeColor, false, mat, buffers, true, 0, 0xF000F0);
-    buffers.finish();
+    ms.push();
+    ms.translate(0, 0, TEXT_SHADOW_Z_OFFSET);
+    Matrix4f shadowMat = ms.getLast().getMatrix();
+    font.drawInBatch(text, 1, 1, shadeColor, false, shadowMat, buffers, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+    buffers.endBatch();
+    ms.pop();
 
-    font.renderString(text, 0, 0, color, false, mat, buffers, true, 0, 0xF000F0);
-    buffers.finish();
+    ms.push();
+    ms.translate(0, 0, TEXT_FOREGROUND_Z_OFFSET);
+    Matrix4f mat = ms.getLast().getMatrix();
+    font.drawInBatch(text, 0, 0, color, false, mat, buffers, Font.DisplayMode.NORMAL, 0, 0xF000F0);
+    buffers.endBatch();
+    ms.pop();
 
     ms.pop();
 
   }
 
-  public void renderRequestResultAnimations(MatrixStack ms, IRenderTypeBuffer.Impl buffers) {
+  public void renderRequestResultAnimations(MatrixStack ms, MultiBufferSource.BufferSource buffers) {
     ms.push();
 
     for (int i = requestResultAnimations.size() - 1; i >= 0; i--) {
@@ -179,43 +187,14 @@ public class AnimatedItemStack {
     ms.pop();
   }
 
-  public void renderHud(MatrixStack ms, float pt, MainWindow window) {
+  public void renderHud(GuiGraphics gui, float pt, Window window) {
     if (mc.player == null) return;
 
     if (KeyboardHelper.hasAltDown()) {
-      ms.push();
-      List<ITextComponent> tooltip = stack.getTooltip(mc.player, mc.gameSettings.advancedItemTooltips ? ITooltipFlag.TooltipFlags.ADVANCED : ITooltipFlag.TooltipFlags.NORMAL);
-      GuiUtils.preItemToolTip(stack);
-      FontRenderer font = stack.getItem().getFontRenderer(stack);
-      if (font == null) {
-        font = mc.fontRenderer;
-      }
-      int width = window.getScaledWidth();
-      int height = window.getScaledHeight();
-      int bgCol = MathHelper.hsvToRGB((float) (RenderTick.total % 200F / 200F), 1F, 1F);
-      bgCol |= 150 << 24;
-//      bgCol |= 16 << 24;
-      int borderColStart = MathHelper.hsvToRGB((float) ((RenderTick.total + 66.66F) % 200F / 200F), 1F, 1F) | 0xFF000000;
-      int borderColEnd = MathHelper.hsvToRGB((float) ((RenderTick.total + 133.33F) % 200F / 200F), 1F, 1F) | 0xFF000000;
-      GuiUtils.drawHoveringText(
-          stack,
-          ms,
-          tooltip,
-          width / 2,
-          height / 2,
-          width,
-          height,
-          100,
-          bgCol,
-          borderColStart,
-          borderColEnd,
-          font
-      );
-      ms.pop();
-
-      final MatrixStack itemMS = new MatrixStack();
-      itemMS.scale(3F, 3F, 3F);
-      ItemRenderHelper.renderItemAndEffectIntoGUI(stack, width / 2 - 48, height / 2 - 8, itemMS);
+      List<Component> tooltip = stack.getTooltipLines(mc.player, mc.options.advancedItemTooltips ? TooltipFlag.Default.ADVANCED : TooltipFlag.Default.NORMAL);
+      int width = window.getGuiScaledWidth();
+      int height = window.getGuiScaledHeight();
+      gui.renderComponentTooltip(mc.font, tooltip, width / 2, height / 2);
     }
   }
 
@@ -278,6 +257,10 @@ public class AnimatedItemStack {
   public void changeAmount(int amount, double animationLength) {
     stack.setCount(amount);
   }
+
+  public void shrinkAmount(int amount, double animationLength) {
+    changeAmount(Math.max(0, stack.getCount() - amount), animationLength);
+  }
 }
 
 class RequestResultAnimation {
@@ -288,14 +271,14 @@ class RequestResultAnimation {
     this.amount = amount;
   }
 
-  public boolean render(MatrixStack ms, IRenderTypeBuffer.Impl buffers) {
+  public boolean render(MatrixStack ms, MultiBufferSource.BufferSource buffers) {
     progress += (RenderTick.delta * .05);
     if (progress >= 1) return true;
 
     ms.push();
 
     String text = "-" + amount;
-    double w = Minecraft.getInstance().fontRenderer.getCharacterManager().func_238350_a_(text);
+    double w = Minecraft.getInstance().font.width(text);
     ms.translate(-w / 2, Math.sin(progress * Math.PI / 2) * 10, 0);
     int color = amount == 0 ? 0xFF0000 : 0x00FF00;
     color |= (int) ((1 - Math.sin(progress * Math.PI / 2)) * 255) << 24;

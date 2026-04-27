@@ -1,40 +1,35 @@
 package shblock.interactivecorporea.client.renderer.item;
 
-import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.IVertexBuilder;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.Atlases;
-import net.minecraft.client.renderer.BlockModelRenderer;
-import net.minecraft.client.renderer.BlockRendererDispatcher;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
-import net.minecraft.client.renderer.model.ItemCameraTransforms;
-import net.minecraft.client.renderer.tileentity.ItemStackTileEntityRenderer;
-import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.vector.Quaternion;
-import net.minecraft.util.math.vector.Vector3f;
-import net.minecraftforge.client.model.PerspectiveMapWrapper;
-import net.minecraftforge.client.model.data.EmptyModelData;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.block.BlockRenderDispatcher;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import org.joml.Quaternionf;
 import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.RenderTick;
-import shblock.interactivecorporea.common.util.Perlin;
-import vazkii.botania.client.core.handler.ClientTickHandler;
-import vazkii.botania.client.render.tile.RenderTileCorporeaCrystalCube;
-import vazkii.botania.client.render.tile.RenderTileCorporeaIndex;
+import vazkii.botania.client.render.block_entity.CorporeaCrystalCubeBlockEntityRenderer;
+import vazkii.botania.common.block.BotaniaBlocks;
+import vazkii.botania.common.helper.VecHelper;
 
-public class ISTERRequestingHalo extends ItemStackTileEntityRenderer {
+public class ISTERRequestingHalo extends BlockEntityWithoutLevelRenderer {
   private static final Minecraft mc = Minecraft.getInstance();
-  private static RenderTileCorporeaIndex corporeaIndexRenderer;
+  private static final BlockEntity CORPOREA_INDEX_RENDER_BE = RenderUtil.createRendererDummy(BotaniaBlocks.corporeaIndex);
+
+  public ISTERRequestingHalo() {
+    super(null, null);
+  }
 
   @Override
-  public void func_239207_a_(ItemStack stack, ItemCameraTransforms.TransformType transformType, MatrixStack ms, IRenderTypeBuffer buffers, int combinedLight, int combinedOverlay) {
-    if (corporeaIndexRenderer == null)
-      corporeaIndexRenderer = new RenderTileCorporeaIndex(TileEntityRendererDispatcher.instance);
-
-    ms.push();
+  public void renderByItem(ItemStack stack, ItemDisplayContext transformType, PoseStack ms, MultiBufferSource buffers, int combinedLight, int combinedOverlay) {
+    ms.pushPose();
     switch (transformType) {
       case FIRST_PERSON_LEFT_HAND:
       case THIRD_PERSON_LEFT_HAND:
@@ -48,56 +43,59 @@ public class ISTERRequestingHalo extends ItemStackTileEntityRenderer {
         float sg = .1F;
         ms.scale(sg, sg, sg);
         break;
+      default:
+        break;
     }
 
-    ms.push();
+    ms.pushPose();
     ms.scale(.5F, .5F, .5F);
     ms.translate(.5, .5, .5);
-    corporeaIndexRenderer.render(null, (float) RenderTick.pt, ms, buffers, combinedLight, combinedOverlay);
-    ms.pop();
+    RenderUtil.renderBlockEntity(ms, buffers, combinedLight, combinedOverlay, CORPOREA_INDEX_RENDER_BE, null);
+    ms.popPose();
 
     if (ModConfig.CLIENT.itemRequestingHaloAnimation.get()) {
-      ms.push();
+      ms.pushPose();
       ms.translate(.5, .5, .5);
-      int color = MathHelper.hsvToRGB((float) ((RenderTick.total / 200F) % 1F), 1F, 1F) | 150 << 24;
-      RenderUtil.renderPerlinStar(ms, buffers, color, .1F, .1F, .1F, 0);
-      ms.pop();
+      int color = Mth.hsvToRgb((float) ((RenderTick.total / 200F) % 1F), 1F, 1F) | 150 << 24;
+      RenderUtil.renderPerlinStar(ms, buffers, color, .04F, .04F, .04F, 0);
+      ms.popPose();
     }
 
-    BlockRendererDispatcher blockRenderer = mc.getBlockRendererDispatcher();
-    BlockModelRenderer blockModelRenderer = blockRenderer.getBlockModelRenderer();
-    IVertexBuilder buffer = buffers.getBuffer(Atlases.getTranslucentCullBlockType());
+    BlockRenderDispatcher blockRenderer = mc.getBlockRenderer();
+    VertexConsumer buffer = buffers.getBuffer(Sheets.translucentCullBlockSheet());
 
-    ms.push();
+    ms.pushPose();
     ms.scale(.5F, .5F, .5F);
     ms.translate(.5, .5, .5);
     ms.translate(.5, .5, .5);
     ms.translate(-.5, -.5, -.5);
     double per = 0.02;
     for (double i = 0; i < 1; i += per) {
-      ms.push();
+      ms.pushPose();
       ms.translate(.5, .5, .5);
-      ms.rotate(Vector3f.ZP.rotation((float) (Math.PI * i * 2)));
+      ms.mulPose(VecHelper.rotateZ((float) (360F * i)));
       ms.translate(-.5, -.5, -.5);
       ms.translate(0, .8, 0);
 
       ms.translate(.5, .5, .5);
       double r = RenderTick.total * .1;
-      if (!ModConfig.CLIENT.itemRequestingHaloAnimation.get())
+      if (!ModConfig.CLIENT.itemRequestingHaloAnimation.get()) {
         r = .2;
-      ms.rotate(new Quaternion(
+      }
+      ms.mulPose(new Quaternionf().rotationXYZ(
           (float) ((i + Math.sin(r) / 5) * Math.PI * 4),
           (float) r,
-          (float) (Math.PI * Math.sin(r) * .25),
-          false
+          (float) (Math.PI * Math.sin(r) * .25)
       ));
       ms.translate(-.5, -.5, -.5);
 
-      blockModelRenderer.renderModel(ms.getLast(), buffer, null, RenderTileCorporeaCrystalCube.cubeModel, 1F, 1F, 1F, combinedLight, combinedOverlay, EmptyModelData.INSTANCE);
-      ms.pop();
+      if (CorporeaCrystalCubeBlockEntityRenderer.cubeModel != null) {
+        blockRenderer.getModelRenderer().renderModel(ms.last(), buffer, null, CorporeaCrystalCubeBlockEntityRenderer.cubeModel, 1F, 1F, 1F, combinedLight, combinedOverlay);
+      }
+      ms.popPose();
     }
-    ms.pop();
+    ms.popPose();
 
-    ms.pop();
+    ms.popPose();
   }
 }

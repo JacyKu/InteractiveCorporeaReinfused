@@ -1,9 +1,10 @@
 package shblock.interactivecorporea.client.jei;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.container.Container;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 
-public class DummyTransferringContainer extends Container {
+public class DummyTransferringContainer extends AbstractContainerMenu {
   public boolean shouldClose = false;
 
   protected DummyTransferringContainer() {
@@ -11,7 +12,12 @@ public class DummyTransferringContainer extends Container {
   }
 
   @Override
-  public boolean canInteractWith(PlayerEntity playerIn) {
+  public boolean stillValid(Player playerIn) {
     return true;
+  }
+
+  @Override
+  public ItemStack quickMoveStack(Player player, int index) {
+    return ItemStack.EMPTY;
   }
 }

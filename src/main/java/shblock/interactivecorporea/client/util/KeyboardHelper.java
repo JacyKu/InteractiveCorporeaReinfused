@@ -1,26 +1,28 @@
 package shblock.interactivecorporea.client.util;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.util.InputMappings;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import static org.lwjgl.glfw.GLFW.*;
 
 public class KeyboardHelper {
-  private static final long window = Minecraft.getInstance().getMainWindow().getHandle();
+  private static long window() {
+    return Minecraft.getInstance().getWindow().getWindow();
+  }
 
   public static boolean hasControlDown() {
-    if (Minecraft.IS_RUNNING_ON_MAC) {
-      return InputMappings.isKeyDown(window, 343) || InputMappings.isKeyDown(window, 347);
+    if (Minecraft.ON_OSX) {
+      return InputConstants.isKeyDown(window(), 343) || InputConstants.isKeyDown(window(), 347);
     } else {
-      return InputMappings.isKeyDown(window, 341) || InputMappings.isKeyDown(window, 345);
+      return InputConstants.isKeyDown(window(), 341) || InputConstants.isKeyDown(window(), 345);
     }
   }
 
   public static boolean hasShiftDown() {
-    return InputMappings.isKeyDown(window, GLFW_KEY_LEFT_SHIFT) || InputMappings.isKeyDown(window, GLFW_KEY_RIGHT_SHIFT);
+    return InputConstants.isKeyDown(window(), GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window(), GLFW_KEY_RIGHT_SHIFT);
   }
 
   public static boolean hasAltDown() {
-    return InputMappings.isKeyDown(window, 342) || InputMappings.isKeyDown(window, 346);
+    return InputConstants.isKeyDown(window(), 342) || InputConstants.isKeyDown(window(), 346);
   }
 }

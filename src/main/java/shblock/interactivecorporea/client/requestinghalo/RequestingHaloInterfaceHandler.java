@@ -1,28 +1,36 @@
 package shblock.interactivecorporea.client.requestinghalo;
 
+import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.inventory.ContainerScreen;
-import net.minecraft.client.settings.KeyBinding;
-import net.minecraft.client.util.InputMappings;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.container.Slot;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.*;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.client.settings.KeyConflictContext;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.network.NetworkEvent;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.ModSounds;
+import shblock.interactivecorporea.common.network.CPacketRequestingHaloState;
+import shblock.interactivecorporea.common.network.CPacketRequestingHaloViewUpdate;
+import shblock.interactivecorporea.common.network.ModPacketHandler;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.CurioSlotPointer;
 import shblock.interactivecorporea.common.util.ToolItemHelper;
+import shblock.interactivecorporea.common.util.Vec2d;
 
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -31,11 +39,13 @@ import static org.lwjgl.glfw.GLFW.*;
 public class RequestingHaloInterfaceHandler {
   private static final Minecraft mc = Minecraft.getInstance();
   private static RequestingHaloInterface haloInterface;
+  private static final Map<Integer, RemoteRequestingHaloInterface> remoteInterfaces = new HashMap<>();
+  private static int lastViewSyncTick = -1;
 
-  public static final KeyBinding KEY_BINDING = new KeyBinding(
+  public static final KeyMapping KEY_BINDING = new KeyMapping(
       "key.interactive_corporea.requesting_halo",
       KeyConflictContext.IN_GAME,
-      InputMappings.Type.KEYSYM.getOrMakeInput(GLFW_KEY_TAB),
+      InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_TAB),
       IC.KEY_CATEGORY
   );
 
@@ -47,6 +57,7 @@ public class RequestingHaloInterfaceHandler {
     haloInterface = face;
     setupKeyboardListener();
     face.playSound(ModSounds.haloOpen, 1F);
+    syncRemoteState(true);
   }
 
   public static boolean isInterfaceOpened() {
@@ -54,18 +65,21 @@ public class RequestingHaloInterfaceHandler {
   }
 
   private static void setupKeyboardListener() {
-    KeyBinding.unPressAllKeys();
-    glfwSetKeyCallback(mc.getMainWindow().getHandle(),
+    KeyMapping.releaseAll();
+    glfwSetKeyCallback(mc.getWindow().getWindow(),
         (windowPointer, key, scanCode, action, modifiers) -> {
           preKeyEvent(key, scanCode, action, modifiers);
-          if ((!shouldCancelKeyEvent(key, scanCode)) || mc.currentScreen != null) {
-            mc.execute(() -> mc.keyboardListener.onKeyEvent(windowPointer, key, scanCode, action, modifiers));
+          if ((!shouldCancelKeyEvent(key, scanCode)) || mc.screen != null) {
+            mc.execute(() -> mc.keyboardHandler.keyPress(windowPointer, key, scanCode, action, modifiers));
           }
         });
-    glfwSetCharModsCallback(mc.getMainWindow().getHandle(), (windowPointer, codePoint, modifiers) -> {
-      if (mc.currentScreen != null) {
+    glfwSetCharModsCallback(mc.getWindow().getWindow(), (windowPointer, codePoint, modifiers) -> {
+      Screen screen = mc.screen;
+      if (screen != null) {
         mc.execute(() -> {
-          mc.keyboardListener.onCharEvent(windowPointer, codePoint, modifiers);
+          for (char character : Character.toChars(codePoint)) {
+            screen.charTyped(character, modifiers);
+          }
         });
       } else {
         RequestingHaloInterfaceHandler.charCallback(codePoint, modifiers);
@@ -74,7 +88,7 @@ public class RequestingHaloInterfaceHandler {
   }
 
   public static void resetKeyboardListener() {
-    mc.keyboardListener.setupCallbacks(mc.getMainWindow().getHandle());
+    mc.keyboardHandler.setup(mc.getWindow().getWindow());
   }
 
   /**
@@ -92,15 +106,23 @@ public class RequestingHaloInterfaceHandler {
    */
   public static void clearInterface() {
     if (haloInterface != null) {
+      syncRemoteState(false);
       haloInterface.close();
       haloInterface = null;
       resetKeyboardListener();
+      lastViewSyncTick = -1;
     }
   }
 
-  public static CISlotPointer getFirstHaloSlot(PlayerEntity player) {
-    if (player.inventory.getCurrentItem().getItem() instanceof ItemRequestingHalo) {
-      return new CISlotPointer(player.inventory.currentItem);
+  static void syncRemoteState(boolean open) {
+    if (haloInterface != null) {
+      ModPacketHandler.sendToServer(new CPacketRequestingHaloState(haloInterface.getSlot(), open, haloInterface.getRotationOffset()));
+    }
+  }
+
+  public static CISlotPointer getFirstHaloSlot(Player player) {
+    if (player.getInventory().getSelected().getItem() instanceof ItemRequestingHalo) {
+      return new CISlotPointer(player.getInventory().selected);
     }
 
     CurioSlotPointer cSlot = ToolItemHelper.getFirstMatchedCurioSlot(player, ItemRequestingHalo.class);
@@ -116,7 +138,7 @@ public class RequestingHaloInterfaceHandler {
     return null;
   }
 
-  public static boolean tryOpen(PlayerEntity player) {
+  public static boolean tryOpen(Player player) {
     CISlotPointer slot = getFirstHaloSlot(player);
     if (slot != null) {
       openInterface(new RequestingHaloInterface(slot));
@@ -137,8 +159,7 @@ public class RequestingHaloInterfaceHandler {
 //      return true;
 //    }
 //    return false;
-
-    return currentStack.isItemEqual(getInterface().getHaloItem()); //TODO: better halo item validation
+    return ItemStack.isSameItemSameTags(currentStack, getInterface().getHaloItem()); //TODO: better halo item validation
   }
 
   public static void handleUpdatePacket(List<ItemStack> itemList) {
@@ -153,17 +174,59 @@ public class RequestingHaloInterfaceHandler {
     }
   }
 
-  @SubscribeEvent
-  public static void onLogOut(ClientPlayerNetworkEvent.LoggedOutEvent event) {
-    haloInterface = null;
+  public static void handleRemoteState(int playerId, boolean open, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList) {
+    if (mc.player != null && mc.player.getId() == playerId) {
+      return;
+    }
+
+    RemoteRequestingHaloInterface remote = remoteInterfaces.get(playerId);
+    if (!open) {
+      if (remote != null) {
+        remote.startClose();
+      }
+      return;
+    }
+
+    if (remote == null) {
+      remote = new RemoteRequestingHaloInterface(playerId, rotationOffset, listHeight, sortByAmount, itemList);
+      remoteInterfaces.put(playerId, remote);
+    } else {
+      remote.update(rotationOffset, listHeight, sortByAmount, itemList);
+    }
+  }
+
+  public static void handleRemoteViewUpdate(int playerId, float rotationOffset, float relativeRotation, boolean hasSelection, float selectionX, float selectionY) {
+    handleRemoteViewUpdate(playerId, rotationOffset, relativeRotation, 5, hasSelection, selectionX, selectionY, "");
+  }
+
+  public static void handleRemoteViewUpdate(int playerId, float rotationOffset, float relativeRotation, int listHeight, boolean hasSelection, float selectionX, float selectionY, String searchString) {
+    if (mc.player != null && mc.player.getId() == playerId) {
+      return;
+    }
+
+    RemoteRequestingHaloInterface remote = remoteInterfaces.get(playerId);
+    if (remote != null) {
+      remote.updateView(rotationOffset, relativeRotation, listHeight, hasSelection, selectionX, selectionY, searchString);
+    }
   }
 
   @SubscribeEvent
-  public static void onWorldRender(RenderWorldLastEvent event) {
+  public static void onLogOut(ClientPlayerNetworkEvent.LoggingOut event) {
+    haloInterface = null;
+    remoteInterfaces.clear();
+  }
+
+  @SubscribeEvent
+  public static void onWorldRender(RenderLevelStageEvent event) {
+    if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
+      return;
+    }
+
     RequestingHaloInterface face = getInterface();
     if (face != null) {
       if (!slotStillValid()) {
         clearInterface();
+        return;
       } else {
         face.updateHaloItem(face.getSlot().getStack(mc.player));
       }
@@ -173,17 +236,47 @@ public class RequestingHaloInterfaceHandler {
 //          closeInterface();
 //        }
 //      }
-      if (!face.render(event.getMatrixStack(), event.getPartialTicks())) {
+      MatrixStack stack = new MatrixStack(event.getPoseStack());
+      if (!face.render(stack, event.getCamera(), event.getPartialTick())) {
         clearInterface();
+      } else {
+        syncRemoteViewState(face);
+      }
+    }
+
+    Iterator<Map.Entry<Integer, RemoteRequestingHaloInterface>> iterator = remoteInterfaces.entrySet().iterator();
+    while (iterator.hasNext()) {
+      RemoteRequestingHaloInterface remote = iterator.next().getValue();
+      MatrixStack stack = new MatrixStack(event.getPoseStack());
+      if (!remote.render(stack, event.getCamera(), event.getPartialTick())) {
+        iterator.remove();
       }
     }
   }
 
+  private static void syncRemoteViewState(RequestingHaloInterface face) {
+    if (mc.player == null || mc.player.tickCount == lastViewSyncTick) {
+      return;
+    }
+    lastViewSyncTick = mc.player.tickCount;
+
+    Vec2d selectionPos = face.getSelectionTargetPos();
+    ModPacketHandler.sendToServer(new CPacketRequestingHaloViewUpdate(
+        (float) face.getRotationOffset(),
+        (float) face.getRelativeRotation(),
+      face.getListHeight(),
+        selectionPos != null,
+        selectionPos == null ? 0F : (float) selectionPos.x,
+        selectionPos == null ? 0F : (float) selectionPos.y,
+        face.getSearchString()
+    ));
+  }
+
   @SubscribeEvent
-  public static void onHudRender(RenderGameOverlayEvent.Post event) {
+  public static void onHudRender(RenderGuiOverlayEvent.Post event) {
     if (getInterface() == null) return;
-    if (event.getType() == RenderGameOverlayEvent.ElementType.ALL) {
-      getInterface().renderHud(event.getMatrixStack(), event.getPartialTicks(), event.getWindow());
+    if (event.getOverlay() == VanillaGuiOverlay.HOTBAR.type()) {
+      getInterface().renderHud(event.getGuiGraphics(), event.getPartialTick(), event.getWindow());
     }
   }
 
@@ -192,6 +285,9 @@ public class RequestingHaloInterfaceHandler {
     if (event.phase == TickEvent.Phase.START) {
       if (getInterface() != null) {
         getInterface().tick();
+      }
+      for (RemoteRequestingHaloInterface remote : remoteInterfaces.values()) {
+        remote.tick();
       }
     }
   }
@@ -221,10 +317,10 @@ public class RequestingHaloInterfaceHandler {
 //  }
 
   @SubscribeEvent
-  public static void onMouseInput(InputEvent.RawMouseEvent event) {
+  public static void onMouseInput(InputEvent.MouseButton.Pre event) {
     if (getInterface() != null) {
       if (!getInterface().isOpenClose()) {
-        if (getInterface().onMouseInput(event.getButton(), event.getAction(), event.getMods())) {
+        if (getInterface().onMouseInput(event.getButton(), event.getAction(), event.getModifiers())) {
           event.setCanceled(true);
         }
       }
@@ -232,10 +328,10 @@ public class RequestingHaloInterfaceHandler {
   }
 
   @SubscribeEvent
-  public static void onMouseScroll(InputEvent.MouseScrollEvent event) {
+  public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
     if (getInterface() != null) {
       if (!getInterface().isOpenClose()) {
-        if (getInterface().onMouseScroll(event.getScrollDelta(), event.isLeftDown(), event.isMiddleDown(), event.isRightDown())) {
+        if (getInterface().onMouseScroll(event.getScrollDelta(), event.isRightDown(), event.isMiddleDown(), event.isLeftDown())) {
           event.setCanceled(true);
         }
       }
@@ -255,7 +351,7 @@ public class RequestingHaloInterfaceHandler {
   }
 
   @SubscribeEvent
-  public static void onKeyEvent(InputEvent.KeyInputEvent event) {
+  public static void onKeyEvent(InputEvent.Key event) {
 //    if (event.getKey() == GLFW.GLFW_KEY_N && event.getAction() == GLFW.GLFW_PRESS) {
 //      try {
 //        WormholeRenderer.loadShader();
@@ -269,8 +365,8 @@ public class RequestingHaloInterfaceHandler {
         getInterface().onKeyEvent(event.getKey(), event.getScanCode(), event.getAction(), event.getModifiers());
       }
     }
-    if (mc.currentScreen != null) return;
-    if (KEY_BINDING.isPressed()) {
+    if (mc.screen != null) return;
+    if (KEY_BINDING.matches(event.getKey(), event.getScanCode()) && event.getAction() == GLFW_PRESS) {
       if (getInterface() == null) {
         tryOpen(mc.player);
       } else {
@@ -280,7 +376,7 @@ public class RequestingHaloInterfaceHandler {
   }
 
   public static void charCallback(int codePoint, int modifiers) {
-    if (mc.currentScreen == null) {
+    if (mc.screen == null) {
       if (getInterface() != null) {
         getInterface().onCharEvent(codePoint, modifiers);
       }
@@ -290,11 +386,11 @@ public class RequestingHaloInterfaceHandler {
   public static Supplier<ItemStack> jeiUnderMouseGetter = () -> null;
 
   public static ItemStack getUnderMouseItemStack() {
-    Screen screen = mc.currentScreen;
-    if (screen instanceof ContainerScreen) {
-      Slot slot = ((ContainerScreen<?>) screen).getSlotUnderMouse();
+    Screen screen = mc.screen;
+    if (screen instanceof AbstractContainerScreen) {
+      Slot slot = ((AbstractContainerScreen<?>) screen).getSlotUnderMouse();
       if (slot != null) {
-        return slot.getStack();
+        return slot.getItem();
       }
     }
 

@@ -1,33 +1,33 @@
 package shblock.interactivecorporea.common.crafting;
 
-import net.minecraft.inventory.CraftingInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.IRecipeSerializer;
-import net.minecraft.item.crafting.SpecialRecipe;
-import net.minecraft.item.crafting.SpecialRecipeSerializer;
-import net.minecraft.util.NonNullList;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.registry.Registry;
-import net.minecraft.world.World;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.CustomRecipe;
+import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
+import net.minecraft.core.NonNullList;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import vazkii.botania.common.crafting.recipe.RecipeUtils;
 
-public class RequestingHaloRemoveModuleRecipe extends SpecialRecipe {
-  public static final SpecialRecipeSerializer<RequestingHaloRemoveModuleRecipe> SERIALIZER = new SpecialRecipeSerializer<>(RequestingHaloRemoveModuleRecipe::new);
+public class RequestingHaloRemoveModuleRecipe extends CustomRecipe {
+  public static final SimpleCraftingRecipeSerializer<RequestingHaloRemoveModuleRecipe> SERIALIZER = new SimpleCraftingRecipeSerializer<>(RequestingHaloRemoveModuleRecipe::new);
 
-  public RequestingHaloRemoveModuleRecipe(ResourceLocation id) {
-    super(id);
+  public RequestingHaloRemoveModuleRecipe(ResourceLocation id, CraftingBookCategory category) {
+    super(id, category);
   }
 
   @Override
-  public boolean matches(CraftingInventory inv, World world) {
+  public boolean matches(CraftingContainer inv, Level world) {
     boolean foundHalo = false;
 
-    for (int i = 0; i < inv.getSizeInventory(); i++) {
-      ItemStack stack = inv.getStackInSlot(i);
+    for (int i = 0; i < inv.getContainerSize(); i++) {
+      ItemStack stack = inv.getItem(i);
       if (!stack.isEmpty()) {
         if (stack.getItem() instanceof ItemRequestingHalo) {
           if (!ItemRequestingHalo.isAnyModuleInstalled(stack)) return false;
@@ -43,11 +43,11 @@ public class RequestingHaloRemoveModuleRecipe extends SpecialRecipe {
   }
 
   @Override
-  public ItemStack getCraftingResult(CraftingInventory inv) {
+  public ItemStack assemble(CraftingContainer inv, RegistryAccess registries) {
     ItemStack halo = null;
 
-    for (int i = 0; i < inv.getSizeInventory(); i++) {
-      ItemStack stack = inv.getStackInSlot(i);
+    for (int i = 0; i < inv.getContainerSize(); i++) {
+      ItemStack stack = inv.getItem(i);
       if (!stack.isEmpty()) {
         if (stack.getItem() instanceof ItemRequestingHalo) {
           if (!ItemRequestingHalo.isAnyModuleInstalled(stack)) return ItemStack.EMPTY;
@@ -71,7 +71,7 @@ public class RequestingHaloRemoveModuleRecipe extends SpecialRecipe {
   }
 
   @Override
-  public NonNullList<ItemStack> getRemainingItems(CraftingInventory inv) {
+  public NonNullList<ItemStack> getRemainingItems(CraftingContainer inv) {
     return RecipeUtils.getRemainingItemsSub(inv,
         s -> {
             if (s.getItem() instanceof ItemRequestingHalo) {
@@ -87,12 +87,12 @@ public class RequestingHaloRemoveModuleRecipe extends SpecialRecipe {
   }
 
   @Override
-  public boolean canFit(int width, int height) {
+  public boolean canCraftInDimensions(int width, int height) {
     return width + height > 0;
   }
 
   @Override
-  public IRecipeSerializer<?> getSerializer() {
+  public RecipeSerializer<?> getSerializer() {
     return SERIALIZER;
   }
 }

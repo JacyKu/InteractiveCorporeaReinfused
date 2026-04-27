@@ -2,12 +2,13 @@ package shblock.interactivecorporea.client.jei;
 
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
-import mezz.jei.api.constants.VanillaRecipeCategoryUid;
+import mezz.jei.api.constants.RecipeTypes;
+import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.client.Minecraft;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
 
@@ -17,7 +18,7 @@ public class ICJeiPlugin implements IModPlugin {
 
   @Override
   public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
-    registration.addRecipeTransferHandler(new HaloRecipeTransferHandler(), VanillaRecipeCategoryUid.CRAFTING);
+    registration.addRecipeTransferHandler(new HaloRecipeTransferHandler(), RecipeTypes.CRAFTING);
   }
 
   @Override
@@ -26,8 +27,8 @@ public class ICJeiPlugin implements IModPlugin {
     RequestingHaloInterfaceHandler.jeiUnderMouseGetter = () -> {
       Object o = jeiRuntime.getIngredientListOverlay().getIngredientUnderMouse();
 
-      if (o == null && Minecraft.getInstance().currentScreen == jeiRuntime.getRecipesGui()) {
-        o = jeiRuntime.getRecipesGui().getIngredientUnderMouse();
+      if (o == null && Minecraft.getInstance().screen == jeiRuntime.getRecipesGui()) {
+        o = jeiRuntime.getRecipesGui().getIngredientUnderMouse(VanillaTypes.ITEM_STACK);
       }
 
       if (o == null) {

@@ -1,7 +1,7 @@
 package shblock.interactivecorporea.client.requestinghalo;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.math.vector.Vector3f;
 import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.RenderTick;

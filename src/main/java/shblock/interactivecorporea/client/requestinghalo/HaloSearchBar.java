@@ -3,64 +3,90 @@ package shblock.interactivecorporea.client.requestinghalo;
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.fonts.TextInputUtil;
 import net.minecraft.util.math.MathHelper;
 import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.RenderTick;
 import shblock.interactivecorporea.common.util.MathUtil;
-import vazkii.botania.client.core.handler.ClientTickHandler;
 
 public class HaloSearchBar {
   private static final Minecraft mc = Minecraft.getInstance();
+  private static final int DEFAULT_TEXT_COLOR = 0xFFFFFFFF;
+  private static final int PREFIX_TEXT_COLOR = 0xFFFFFF00;
+  private static final int CREATIVE_TAB_PREFIX_TEXT_COLOR = 0xFFFF00FF;
 
   private boolean searching;
   private String searchString = "";
   private int selectionStart;
   private int selectionEnd;
+  private boolean hasMatches = true;
 
   private Runnable updateCallback;
 
   public void render(MatrixStack ms, double radius, double haloHeight) {
     ms.push();
     float textScale = .02F;
-    double barHeight = mc.fontRenderer.FONT_HEIGHT * textScale / 2F + .025;
+    double barHeight = mc.font.lineHeight * textScale / 2F + .025;
     ms.translate(0, haloHeight + barHeight + .1, 0);
     float alpha = .6F;
     float[] color;
     if (searching) {
-      color = MathUtil.hsvaToRGBA((float) ((RenderTick.total / 400F) % 1F), 1F, 1F, alpha);
+      color = hasMatches || searchString.isEmpty()
+          ? new float[]{0F, .5F, 1F, alpha}
+          : new float[]{1F, 0F, 0F, alpha};
     } else {
       color = new float[]{.5F, .5F, .5F, alpha};
     }
     float[] revCol = MathUtil.revertColor(color);
-    double rot = RenderUtil.renderTextOnHaloCentered(
-        ms, mc.fontRenderer, searchString, radius - .01, textScale, 0xFFFFFFFF,
-        i -> {
+    double rot = RenderUtil.calcTextOnHaloRadians(mc.font, searchString, textScale, radius - .01);
+    RenderUtil.renderPartialHalo(
+      ms,
+      radius,
+      Math.max(rot / 2, .1F),
+      barHeight,
+      .1,
+      color[0], color[1], color[2], color[3]
+    );
+    RenderUtil.renderTextOnHaloCentered(
+        ms, mc.font, searchString, radius - .01, textScale,
+        this::getSearchTextColor,
+        charIndex -> {
           if (searching) {
-            if (i >= Math.min(selectionStart, selectionEnd) && i < Math.max(selectionStart, selectionEnd))
+            if (charIndex >= Math.min(selectionStart, selectionEnd) && charIndex < Math.max(selectionStart, selectionEnd))
               return MathUtil.colorToInt(revCol[0], revCol[1], revCol[2], alpha);
           }
           return 0;
         },
-        i -> {
+        charIndex -> {
           if (searching) {
-            if (i == selectionEnd)
+            if (charIndex == selectionEnd)
               if ((RenderTick.total / 20) % 1 < .5) {
-                return i == searchString.length() ? '_' : '|';
+                return charIndex == searchString.length() ? '_' : '|';
               }
           }
           return (char) 0;
         }
     );
-    RenderUtil.renderPartialHalo(
-        ms,
-        radius,
-        Math.max(rot / 2, .1F),
-        barHeight,
-        .1,
-        color[0], color[1], color[2], color[3]
-    );
     ms.pop();
+  }
+
+  private int getSearchTextColor(int charIndex) {
+    if (charIndex < 0 || charIndex >= searchString.length()) {
+      return DEFAULT_TEXT_COLOR;
+    }
+
+    int segmentStart = charIndex;
+    while (segmentStart > 0 && !Character.isWhitespace(searchString.charAt(segmentStart - 1))) {
+      segmentStart--;
+    }
+
+    char prefix = searchString.charAt(segmentStart);
+    if (prefix == '%') {
+      return CREATIVE_TAB_PREFIX_TEXT_COLOR;
+    }
+    if (prefix == '@' || prefix == '$' || prefix == '&') {
+      return PREFIX_TEXT_COLOR;
+    }
+    return DEFAULT_TEXT_COLOR;
   }
 
   private void fixSelection() {
@@ -201,12 +227,12 @@ public class HaloSearchBar {
 
   public void copy() {
     if (selectionStart != selectionEnd) {
-      TextInputUtil.setClipboardText(mc, searchString.substring(Math.min(selectionStart, selectionEnd), Math.max(selectionStart, selectionEnd)));
+      mc.keyboardHandler.setClipboard(searchString.substring(Math.min(selectionStart, selectionEnd), Math.max(selectionStart, selectionEnd)));
     }
   }
 
   public void paste() {
-    inputString(TextInputUtil.getClipboardText(mc));
+    inputString(mc.keyboardHandler.getClipboard());
   }
 
   public void cut() {
@@ -226,6 +252,10 @@ public class HaloSearchBar {
 
   public void setSearching(boolean searching) {
     this.searching = searching;
+  }
+
+  public void setHasMatches(boolean hasMatches) {
+    this.hasMatches = hasMatches;
   }
 
   public boolean isSearching() {

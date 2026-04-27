@@ -1,12 +1,10 @@
 package shblock.interactivecorporea.client.requestinghalo.crafting;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.vertex.IVertexBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
-import net.minecraft.client.renderer.model.ItemCameraTransforms;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Vector3f;
 import shblock.interactivecorporea.client.render.ModRenderTypes;
@@ -14,9 +12,6 @@ import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.RenderTick;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.util.Vec2d;
-import vazkii.botania.client.core.handler.ClientTickHandler;
-
-import javax.annotation.Nullable;
 
 public class CraftingInterfaceSlot {
   private static final Minecraft mc = Minecraft.getInstance();
@@ -116,27 +111,26 @@ public class CraftingInterfaceSlot {
   }
 
   private void renderBg(MatrixStack ms, float r, float g, float b, float a) {
-    IRenderTypeBuffer.Impl buffers = mc.getRenderTypeBuffers().getBufferSource();
-    IVertexBuilder builder = buffers.getBuffer(ModRenderTypes.craftingSlotBg);
+    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+    VertexConsumer builder = buffers.getBuffer(ModRenderTypes.craftingSlotBg);
     Matrix4f matrix = ms.getLast().getMatrix();
 
-    builder.pos(matrix, +1, 0, +1).color(r, g, b, a).endVertex();
-    builder.pos(matrix, +1, 0, -1).color(r, g, b, a).endVertex();
-    builder.pos(matrix, -1, 0, -1).color(r, g, b, a).endVertex();
-    builder.pos(matrix, -1, 0, +1).color(r, g, b, a).endVertex();
+    builder.vertex(matrix, +1, 0, +1).color(r, g, b, a).endVertex();
+    builder.vertex(matrix, +1, 0, -1).color(r, g, b, a).endVertex();
+    builder.vertex(matrix, -1, 0, -1).color(r, g, b, a).endVertex();
+    builder.vertex(matrix, -1, 0, +1).color(r, g, b, a).endVertex();
 
-    buffers.finish(ModRenderTypes.craftingSlotBg);
+    buffers.endBatch(ModRenderTypes.craftingSlotBg);
   }
 
   private void renderRealItem(MatrixStack ms) { //TODO!!!!!!!!!!: cache the real item (server send update packet to update the cache)
     ItemStack stack = ItemRequestingHalo.getStackInCraftingSlot(craftingInterface.haloStack, slot);
     if (stack.isEmpty()) return;
     ms.push();
-    IRenderTypeBuffer.Impl buffers = mc.getRenderTypeBuffers().getBufferSource();
-    ms.scale(5, 5, 5);
-    ms.translate(0, .1, 0);
-    mc.getItemRenderer().renderItem(stack, ItemCameraTransforms.TransformType.GROUND, 0xF000F0, OverlayTexture.NO_OVERLAY, ms, buffers);
-    buffers.finish();
+    ms.scale(2F, 1F, 2F);
+    ms.rotate(Vector3f.XP.rotationDegrees(90));
+    ms.rotate(Vector3f.YP.rotationDegrees(180));
+    RenderUtil.renderFlatItem(ms, stack);
     ms.pop();
   }
 
@@ -145,7 +139,7 @@ public class CraftingInterfaceSlot {
 
     if (newStack.isEmpty() && shadowStack.isEmpty()) return false;
     if (!newStack.isEmpty() && !shadowStack.isEmpty()) {
-      if (ItemStack.areItemStacksEqual(newStack, shadowStack)) {
+      if (ItemStack.isSameItemSameTags(newStack, shadowStack)) {
         return false;
       }
     }

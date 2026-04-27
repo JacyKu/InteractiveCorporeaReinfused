@@ -1,11 +1,12 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.fml.network.NetworkDirection;
-import net.minecraftforge.fml.network.NetworkRegistry;
-import net.minecraftforge.fml.network.simple.SimpleChannel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraftforge.network.NetworkDirection;
+import net.minecraftforge.network.NetworkRegistry;
+import net.minecraftforge.network.PacketDistributor;
+import net.minecraftforge.network.simple.SimpleChannel;
 import shblock.interactivecorporea.IC;
 
 import java.util.Optional;
@@ -29,14 +30,27 @@ public class ModPacketHandler {
     CHANNEL.registerMessage(id++, CPacketChangeStackInHaloCraftingSlot.class, CPacketChangeStackInHaloCraftingSlot::encode, CPacketChangeStackInHaloCraftingSlot::decode, CPacketChangeStackInHaloCraftingSlot::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     CHANNEL.registerMessage(id++, CPacketDoCraft.class, CPacketDoCraft::encode, CPacketDoCraft::decode, CPacketDoCraft::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     CHANNEL.registerMessage(id++, SPacketCraftingState.class, SPacketCraftingState::encode, SPacketCraftingState::decode, SPacketCraftingState::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+    CHANNEL.registerMessage(id++, CPacketRequestingHaloState.class, CPacketRequestingHaloState::encode, CPacketRequestingHaloState::decode, CPacketRequestingHaloState::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+    CHANNEL.registerMessage(id++, SPacketRemoteRequestingHaloState.class, SPacketRemoteRequestingHaloState::encode, SPacketRemoteRequestingHaloState::decode, SPacketRemoteRequestingHaloState::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+    CHANNEL.registerMessage(id++, CPacketRequestingHaloViewUpdate.class, CPacketRequestingHaloViewUpdate::encode, CPacketRequestingHaloViewUpdate::decode, CPacketRequestingHaloViewUpdate::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+    CHANNEL.registerMessage(id++, SPacketRemoteRequestingHaloViewUpdate.class, SPacketRemoteRequestingHaloViewUpdate::encode, SPacketRemoteRequestingHaloViewUpdate::decode, SPacketRemoteRequestingHaloViewUpdate::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
   }
 
-  public static void sendToPlayer(ServerPlayerEntity player, Object message) {
-    CHANNEL.sendTo(message, player.connection.getNetworkManager(), NetworkDirection.PLAY_TO_CLIENT);
+  public static void sendToPlayer(ServerPlayer player, Object message) {
+    CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
   }
 
-  public static void sendToPlayersInWorld(ServerWorld world, Object message) {
-    for (ServerPlayerEntity player : world.getPlayers()) {
+  public static void sendToPlayersInWorld(ServerLevel world, Object message) {
+    for (ServerPlayer player : world.getPlayers(serverPlayer -> true)) {
+      sendToPlayer(player, message);
+    }
+  }
+
+  public static void sendToPlayersInWorldExcept(ServerPlayer source, Object message) {
+    if (!(source.level() instanceof ServerLevel world)) {
+      return;
+    }
+    for (ServerPlayer player : world.getPlayers(serverPlayer -> serverPlayer != source)) {
       sendToPlayer(player, message);
     }
   }

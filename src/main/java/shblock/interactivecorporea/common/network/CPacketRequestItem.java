@@ -1,17 +1,16 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketBuffer;
-import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.math.GlobalPos;
-import net.minecraft.world.World;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.tile.TileItemQuantizationDevice;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.NetworkHelper;
-import shblock.interactivecorporea.common.util.WorldHelper;
 import vazkii.botania.common.core.helper.Vector3;
 
 import java.util.function.Supplier;
@@ -31,11 +30,11 @@ public class CPacketRequestItem {
     this.requestId = requestId;
   }
 
-  public static CPacketRequestItem decode(PacketBuffer buf) {
+  public static CPacketRequestItem decode(FriendlyByteBuf buf) {
     return new CPacketRequestItem(NetworkHelper.readCISlotPointer(buf), NetworkHelper.readBigStack(buf), NetworkHelper.readVector3(buf), NetworkHelper.readVector3(buf), buf.readInt());
   }
 
-  public void encode(PacketBuffer buf) {
+  public void encode(FriendlyByteBuf buf) {
     NetworkHelper.writeCISlotPointer(buf, slot);
     NetworkHelper.writeBigStack(buf, stack, false);
     NetworkHelper.writeVector3(buf, requestPos);
@@ -45,21 +44,22 @@ public class CPacketRequestItem {
 
   public void handle(Supplier<NetworkEvent.Context> ctx) {
     ctx.get().enqueueWork(() -> {
-      ServerPlayerEntity player = ctx.get().getSender();
+      ServerPlayer player = ctx.get().getSender();
       if (player == null) return;
       ItemStack halo = slot.getStack(player);
       if (!(halo.getItem() instanceof ItemRequestingHalo)) return;
       GlobalPos pos = ItemRequestingHalo.getBoundSenderPosition(halo);
       if (pos == null) return;
-      World world = WorldHelper.getWorldFromName(pos.getDimension());
+      Level world = player.server.getLevel(pos.dimension());
       if (world == null) return;
-      TileEntity te = world.getTileEntity(pos.getPos());
+      BlockEntity te = world.getBlockEntity(pos.pos());
       if (!(te instanceof TileItemQuantizationDevice)) return;
       TileItemQuantizationDevice qd = (TileItemQuantizationDevice) te;
       ItemStack reqStack = stack.copy();
       int successAmount = qd.requestItem(reqStack, requestPos, normal, player, halo);
 
       ModPacketHandler.sendToPlayer(player, new SPacketRequestResult(requestId, successAmount));
+      CPacketRequestItemListUpdate.broadcastRemoteState(player, halo);
     });
   }
 }

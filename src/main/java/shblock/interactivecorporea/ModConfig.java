@@ -50,8 +50,8 @@ public final class ModConfig {
 
       builder.push("Animations");
       quantizationAnimationSpeed = builder
-          .comment("The animation speed of the quantization of items (that's the ticks of one stage, and there's three stages, so the full animation time will be 3 * <this value>)")
-          .defineInRange("quantizationAnimationSpeed", 10, 1, 100);
+          .comment("The animation speed of the quantization of items (that's the ticks of one visual stage, and the full animation time is roughly 2 * <this value>)")
+          .defineInRange("quantizationAnimationSpeed", 6, 1, 100);
       builder.pop();
     }
   }

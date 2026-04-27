@@ -2,15 +2,17 @@ package shblock.interactivecorporea.client.particle;
 
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import net.minecraft.command.arguments.ItemInput;
-import net.minecraft.command.arguments.ItemParser;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketBuffer;
-import net.minecraft.particles.IParticleData;
-import net.minecraft.particles.ParticleType;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import vazkii.botania.common.core.helper.Vector3;
 
-public class QuantizationParticleData implements IParticleData {
+import java.util.Locale;
+
+public class QuantizationParticleData implements ParticleOptions {
   public final Vector3 dest;
   public final int time;
   public final ItemStack stack;
@@ -29,23 +31,28 @@ public class QuantizationParticleData implements IParticleData {
   }
 
   @Override
-  public void write(PacketBuffer buffer) {
+  public void writeToNetwork(FriendlyByteBuf buffer) {
     buffer.writeDouble(dest.x);
     buffer.writeDouble(dest.y);
     buffer.writeDouble(dest.z);
     buffer.writeInt(time);
-    buffer.writeItemStack(stack);
+    buffer.writeItem(stack);
     buffer.writeBoolean(quantize);
   }
 
   @Override
-  public String getParameters() {
-    return String.format("%s %d %s %s", dest.toString(), time, stack.toString(), quantize);
+  public String writeToString() {
+    return String.format(Locale.ROOT, "%s %.4f %.4f %.4f %d %s %s",
+        BuiltInRegistries.PARTICLE_TYPE.getKey(getType()),
+        dest.x, dest.y, dest.z,
+        time,
+        BuiltInRegistries.ITEM.getKey(stack.getItem()),
+        quantize);
   }
 
-  public static final IDeserializer<QuantizationParticleData> DESERIALIZER = new IDeserializer<QuantizationParticleData>() {
+  public static final ParticleOptions.Deserializer<QuantizationParticleData> DESERIALIZER = new ParticleOptions.Deserializer<>() {
     @Override
-    public QuantizationParticleData deserialize(ParticleType<QuantizationParticleData> particleTypeIn, StringReader reader) throws CommandSyntaxException {
+    public QuantizationParticleData fromCommand(ParticleType<QuantizationParticleData> particleTypeIn, StringReader reader) throws CommandSyntaxException {
       reader.expect(' ');
       double dx = reader.readDouble();
       reader.expect(' ');
@@ -55,8 +62,7 @@ public class QuantizationParticleData implements IParticleData {
       reader.expect(' ');
       int time = reader.readInt();
       reader.expect(' ');
-      ItemParser itemparser = (new ItemParser(reader, false)).parse();
-      ItemStack itemstack = (new ItemInput(itemparser.getItem(), itemparser.getNbt())).createStack(1, false);
+      ItemStack itemstack = new ItemStack(BuiltInRegistries.ITEM.get(new ResourceLocation(reader.readString())));
       reader.expect(' ');
       boolean quantize = reader.readBoolean();
 
@@ -64,11 +70,11 @@ public class QuantizationParticleData implements IParticleData {
     }
 
     @Override
-    public QuantizationParticleData read(ParticleType<QuantizationParticleData> particleTypeIn, PacketBuffer buffer) {
+    public QuantizationParticleData fromNetwork(ParticleType<QuantizationParticleData> particleTypeIn, FriendlyByteBuf buffer) {
       return new QuantizationParticleData(
           new Vector3(buffer.readDouble(), buffer.readDouble(), buffer.readDouble()),
           buffer.readInt(),
-          buffer.readItemStack(),
+          buffer.readItem(),
           buffer.readBoolean()
       );
     }

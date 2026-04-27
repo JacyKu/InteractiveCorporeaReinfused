@@ -1,10 +1,10 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketBuffer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.common.util.ClientSidedCode;
 import shblock.interactivecorporea.common.util.NetworkHelper;
 import vazkii.botania.common.core.helper.Vector3;
@@ -43,18 +43,18 @@ public class SPacketPlayQuantizationEffect {
     this(1, stack, time, pos, normal, scale);
   }
 
-  public static SPacketPlayQuantizationEffect decode(PacketBuffer buf) {
+  public static SPacketPlayQuantizationEffect decode(FriendlyByteBuf buf) {
     switch (buf.readInt()) {
       case QUANTIZATION:
         return new SPacketPlayQuantizationEffect(
-            buf.readItemStack(),
+            buf.readItem(),
             buf.readVarInt(),
             NetworkHelper.readVector3(buf),
             buf.readFloat()
         );
       case CONSTRUCTION:
         return new SPacketPlayQuantizationEffect(
-            buf.readItemStack(),
+            buf.readItem(),
             buf.readVarInt(),
             NetworkHelper.readVector3(buf),
             NetworkHelper.readVector3(buf),
@@ -66,9 +66,9 @@ public class SPacketPlayQuantizationEffect {
   }
 
   @SuppressWarnings("ConstantConditions")
-  public void encode(PacketBuffer buf) {
+  public void encode(FriendlyByteBuf buf) {
     buf.writeInt(type);
-    buf.writeItemStack(stack);
+    buf.writeItem(stack);
     buf.writeVarInt(time);
     NetworkHelper.writeVector3(buf, pos);
     if (type == CONSTRUCTION) {

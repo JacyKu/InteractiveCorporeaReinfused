@@ -1,7 +1,7 @@
 package shblock.interactivecorporea;
 
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.SoundEvent;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
 
 public class ModSounds {
   public static final SoundEvent haloOpen = create("halo.open");
@@ -15,6 +15,6 @@ public class ModSounds {
 
   private static SoundEvent create(String name) {
     ResourceLocation rl = new ResourceLocation(IC.MODID, name);
-    return new SoundEvent(rl).setRegistryName(rl);
+    return SoundEvent.createVariableRangeEvent(rl);
   }
 }

@@ -1,11 +1,11 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketBuffer;
-import net.minecraft.util.Hand;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.InteractionHand;
+import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.requestinghalo.HaloAttractServerHandler;
 import shblock.interactivecorporea.common.util.CISlotPointer;
@@ -31,7 +31,7 @@ public class CPacketChangeStackInHaloCraftingSlot {
     this.clickPos = clickPos;
   }
 
-  public static CPacketChangeStackInHaloCraftingSlot decode(PacketBuffer buf) {
+  public static CPacketChangeStackInHaloCraftingSlot decode(FriendlyByteBuf buf) {
     return new CPacketChangeStackInHaloCraftingSlot(
         NetworkHelper.readCISlotPointer(buf),
         buf.readInt(),
@@ -40,7 +40,7 @@ public class CPacketChangeStackInHaloCraftingSlot {
     );
   }
 
-  public void encode(PacketBuffer buf) {
+  public void encode(FriendlyByteBuf buf) {
     NetworkHelper.writeCISlotPointer(buf, haloSlot);
     buf.writeInt(slot);
     buf.writeBoolean(isPut);
@@ -51,31 +51,31 @@ public class CPacketChangeStackInHaloCraftingSlot {
 
   public void handle(Supplier<NetworkEvent.Context> ctx) {
     ctx.get().enqueueWork(() -> {
-      ServerPlayerEntity player = ctx.get().getSender();
+      ServerPlayer player = ctx.get().getSender();
       if (player == null) return;
       ItemStack halo = haloSlot.getStack(player);
       if (!(halo.getItem() instanceof ItemRequestingHalo)) return;
 
-      ItemStack putStack = player.getHeldItemMainhand();
+      ItemStack putStack = player.getMainHandItem();
       if (isPut) {
-        player.setHeldItem(Hand.MAIN_HAND, ItemStack.EMPTY);
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
         ItemRequestingHalo.tryPutStackInCraftingSlot(
             halo, slot, putStack,
             replacedStack -> {
-              ItemEntity ie = new ItemEntity(player.world, clickPos.x, clickPos.y, clickPos.z, replacedStack);
-              ie.setMotion(0, 0, 0);
+              ItemEntity ie = new ItemEntity(player.level(), clickPos.x, clickPos.y, clickPos.z, replacedStack);
+              ie.setDeltaMovement(0, 0, 0);
               HaloAttractServerHandler.attractIfHasModule(player, ie, halo);
-              player.world.addEntity(ie);
+              player.level().addFreshEntity(ie);
             },
-            newAddStack -> player.setHeldItem(Hand.MAIN_HAND, newAddStack)
+            newAddStack -> player.setItemInHand(InteractionHand.MAIN_HAND, newAddStack)
         );
       } else {
         ItemStack removedStack = ItemRequestingHalo.setStackInCraftingSlot(halo, slot, ItemStack.EMPTY);
         if (!removedStack.isEmpty()) {
-          ItemEntity ie = new ItemEntity(player.world, clickPos.x, clickPos.y, clickPos.z, removedStack);
-          ie.setMotion(0, 0, 0);
+          ItemEntity ie = new ItemEntity(player.level(), clickPos.x, clickPos.y, clickPos.z, removedStack);
+          ie.setDeltaMovement(0, 0, 0);
           HaloAttractServerHandler.attractIfHasModule(player, ie, halo);
-          player.world.addEntity(ie);
+          player.level().addFreshEntity(ie);
         }
       }
     });

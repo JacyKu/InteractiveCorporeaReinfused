@@ -1,38 +1,24 @@
 package shblock.interactivecorporea.client.requestinghalo;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.vertex.IVertexBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
-import net.minecraft.client.renderer.RenderState;
+import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Matrix4f;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.client.util.RenderTick;
 import shblock.interactivecorporea.common.util.Vec2d;
-import vazkii.botania.client.core.handler.ClientTickHandler;
-import vazkii.botania.mixin.AccessorRenderState;
+import vazkii.botania.client.core.helper.RenderHelper;
 
 import java.awt.*;
-
-import static org.lwjgl.opengl.GL44.*;
 
 public class AnimatedItemSelectionBox {
   private static final Minecraft mc = Minecraft.getInstance();
   private static final ResourceLocation ICON = new ResourceLocation(IC.MODID, "textures/ui/selection_box.png");
-  private static final RenderType RENDER_TYPE = RenderType.makeType(
-      IC.MODID + "_item_selection_box",
-      DefaultVertexFormats.POSITION_COLOR_TEX,
-      GL_QUADS,
-      16, false, false,
-      RenderType.State.getBuilder()
-          .transparency(AccessorRenderState.getTranslucentTransparency())
-          .texture(new RenderState.TextureState(ICON, false, false))
-          .build(false)
-  );
+  private static final RenderType RENDER_TYPE = RenderHelper.getHaloLayer(ICON);
 
   private AnimatedItemStack target;
   private AnimatedItemStack lastTarget;
@@ -94,8 +80,8 @@ public class AnimatedItemSelectionBox {
   public void render(MatrixStack ms) {
     ms.push();
     ms.translate(0, 0, -.1);
-    IRenderTypeBuffer.Impl buffers = mc.getRenderTypeBuffers().getBufferSource();
-    IVertexBuilder buffer = buffers.getBuffer(RENDER_TYPE);
+    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+    VertexConsumer buffer = buffers.getBuffer(RENDER_TYPE);
     Color color = Color.getHSBColor((float) (RenderTick.total  / 200F),1F, 1F);
     float r = color.getRed() / 255F;
     float g = color.getGreen() / 255F;
@@ -110,11 +96,11 @@ public class AnimatedItemSelectionBox {
       );
     }
     Matrix4f matrix = ms.getLast().getMatrix();
-    buffer.pos(matrix, -.5F, -.5F, 0F).color(r, g, b, alpha).tex(0F, 0F).endVertex();
-    buffer.pos(matrix, -.5F, .5F, 0F).color(r, g, b, alpha).tex(0F, 1F).endVertex();
-    buffer.pos(matrix, .5F, .5F, 0F).color(r, g, b, alpha).tex(1F, 1F).endVertex();
-    buffer.pos(matrix, .5F, -.5F, 0F).color(r, g, b, alpha).tex(1F, 0F).endVertex();
-    buffers.finish(RENDER_TYPE);
+    buffer.vertex(matrix, -.5F, -.5F, 0F).color(r, g, b, alpha).uv(0F, 0F).endVertex();
+    buffer.vertex(matrix, -.5F, .5F, 0F).color(r, g, b, alpha).uv(0F, 1F).endVertex();
+    buffer.vertex(matrix, .5F, .5F, 0F).color(r, g, b, alpha).uv(1F, 1F).endVertex();
+    buffer.vertex(matrix, .5F, -.5F, 0F).color(r, g, b, alpha).uv(1F, 0F).endVertex();
+    buffers.endBatch(RENDER_TYPE);
     ms.pop();
   }
 

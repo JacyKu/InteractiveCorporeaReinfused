@@ -1,18 +1,17 @@
 package shblock.interactivecorporea.common.corporea;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
-import vazkii.botania.api.corporea.ICorporeaRequestMatcher;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.chat.Component;
+import vazkii.botania.api.corporea.CorporeaRequestMatcher;
 
-public class CorporeaAllMatcher implements ICorporeaRequestMatcher {
+public class CorporeaAllMatcher implements CorporeaRequestMatcher {
   @Override
   public boolean test(ItemStack stack) {
     return true;
   }
 
   @Override
-  public ITextComponent getRequestName() {
-    return new StringTextComponent("internal request");
+  public Component getRequestName() {
+    return Component.literal("internal request");
   }
 }

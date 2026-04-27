@@ -1,7 +1,7 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
@@ -16,11 +16,11 @@ public class SPacketCraftingState {
     this.type = type;
   }
 
-  public static SPacketCraftingState decode(PacketBuffer buf) {
+  public static SPacketCraftingState decode(FriendlyByteBuf buf) {
     return new SPacketCraftingState(buf.readByte());
   }
 
-  public void encode(PacketBuffer buf) {
+  public void encode(FriendlyByteBuf buf) {
     buf.writeByte(type);
   }
 

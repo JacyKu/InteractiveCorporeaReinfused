@@ -1,18 +1,16 @@
 package shblock.interactivecorporea.client.util;
 
-import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemGroup;
-import net.minecraft.item.ItemStack;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.text.ITextComponent;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.Component;
 import net.minecraftforge.fml.ModList;
 
 import javax.annotation.Nullable;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -38,9 +36,9 @@ public class SearchHelper {
             break;
           }
         case '#': // Tooltip
-          List<ITextComponent> textComponents = stack.getTooltip(mc.player, mc.gameSettings.advancedItemTooltips ? ITooltipFlag.TooltipFlags.ADVANCED : ITooltipFlag.TooltipFlags.NORMAL);
+          List<Component> textComponents = stack.getTooltipLines(mc.player, mc.options.advancedItemTooltips ? TooltipFlag.ADVANCED : TooltipFlag.NORMAL);
           boolean anyTooltipMatch = false;
-          for (ITextComponent textComponent : textComponents) {
+          for (Component textComponent : textComponents) {
             if (matchString(textComponent.getString(), subSeg)) {
               anyTooltipMatch = true;
               break;
@@ -51,10 +49,10 @@ public class SearchHelper {
           }
           break;
         case '$': // Tag
-          Set<ResourceLocation> tags = new HashSet<>(item.getTags());
+          Set<ResourceLocation> tags = new HashSet<>();
+          item.builtInRegistryHolder().tags().map(tag -> tag.location()).forEach(tags::add);
           if (item instanceof BlockItem) {
-            Block block = ((BlockItem) item).getBlock();
-            tags.addAll(block.getTags());
+            ((BlockItem) item).getBlock().builtInRegistryHolder().tags().map(tag -> tag.location()).forEach(tags::add);
           }
           boolean anyTagMatch = false;
           for (ResourceLocation tag : tags) {
@@ -68,11 +66,11 @@ public class SearchHelper {
           }
           break;
         case '%': // Creative Tab
-          Collection<ItemGroup> groups = item.getCreativeTabs();
           boolean anyTabMatch = false;
-          for (ItemGroup group : groups) {
-            if (matchString(group.getGroupName().getString(), subSeg)) {
+          for (var group : BuiltInRegistries.CREATIVE_MODE_TAB) {
+            if (group.shouldDisplay() && group.contains(stack) && matchString(group.getDisplayName().getString(), subSeg)) {
               anyTabMatch = true;
+              break;
             }
           }
           if (!anyTabMatch) {
@@ -80,13 +78,13 @@ public class SearchHelper {
           }
           break;
         case '&': // Resource Id
-          ResourceLocation rid = item.getRegistryName();
+          ResourceLocation rid = BuiltInRegistries.ITEM.getKey(item);
           if (!matchString(rid.toString(), subSeg)) {
             return false;
           }
           break;
         default:
-          if (!matchString(item.getDisplayName(stack).getString(), subSeg)) {
+          if (!matchString(stack.getHoverName().getString(), subSeg)) {
             return false;
           }
           break;

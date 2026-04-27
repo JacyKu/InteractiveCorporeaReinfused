@@ -1,38 +1,35 @@
 package shblock.interactivecorporea.common.item;
 
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.client.util.ITooltipFlag;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemUseContext;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.ListNBT;
-import net.minecraft.util.*;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.GlobalPos;
-import net.minecraft.util.text.ITextComponent;
-import net.minecraft.util.text.StringTextComponent;
-import net.minecraft.util.text.TranslationTextComponent;
-import net.minecraft.world.World;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.util.Constants;
-import net.minecraftforge.fml.DistExecutor;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.resources.language.I18n;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.client.renderer.item.ISTERRequestingHalo;
-import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterface;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
 import shblock.interactivecorporea.client.util.KeyboardHelper;
 import shblock.interactivecorporea.common.block.BlockItemQuantizationDevice;
-import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.NBTTagHelper;
 import shblock.interactivecorporea.common.util.StackHelper;
-import vazkii.botania.api.mana.IManaUsingItem;
-import vazkii.botania.common.block.corporea.BlockCorporeaIndex;
+import vazkii.botania.common.block.BotaniaBlocks;
 import vazkii.botania.common.core.helper.ItemNBTHelper;
 
 import javax.annotation.Nonnull;
@@ -40,34 +37,46 @@ import javax.annotation.Nullable;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class ItemRequestingHalo extends Item implements IManaUsingItem {
+public class ItemRequestingHalo extends Item {
   private static final String PREFIX_INDEX_POS = "bound_position";
   private static final String PREFIX_SENDER_POS = "sender_position";
   private static final String PREFIX_MODULES = "modules";
   private static final String PREFIX_CRAFTING_SLOT_ITEMS = "crafting_slot_items";
 
   public ItemRequestingHalo() {
-    super(new Properties().group(IC.ITEM_GROUP).maxStackSize(1).setISTER(() -> ISTERRequestingHalo::new));
+    super(new Properties().stacksTo(1));
   }
 
   @Override
-  public void inventoryTick(ItemStack stack, World world, Entity entity, int slot, boolean isSelected) {
+  public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+    consumer.accept(new IClientItemExtensions() {
+      private final BlockEntityWithoutLevelRenderer renderer = new ISTERRequestingHalo();
+
+      @Override
+      public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+        return renderer;
+      }
+    });
+  }
+
+  @Override
+  public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean isSelected) {
     super.inventoryTick(stack, world, entity, slot, isSelected);
   }
 
   @Override
-  public ActionResult<ItemStack> onItemRightClick(World world, PlayerEntity player, @Nonnull Hand hand) {
-    ItemStack stack = player.getHeldItem(hand);
-    if (world.isRemote) {
-      if (hand == Hand.MAIN_HAND) {
+  public InteractionResultHolder<ItemStack> use(Level world, Player player, @Nonnull InteractionHand hand) {
+    ItemStack stack = player.getItemInHand(hand);
+    if (world.isClientSide) {
+      if (hand == InteractionHand.MAIN_HAND) {
         if (RequestingHaloInterfaceHandler.isInterfaceOpened()) {
           RequestingHaloInterfaceHandler.closeInterface();
         } else {
-          RequestingHaloInterfaceHandler.openInterface(new RequestingHaloInterface(new CISlotPointer(player.inventory.currentItem)));
+          RequestingHaloInterfaceHandler.tryOpen(player);
         }
       }
     }
-    return ActionResult.resultSuccess(stack);
+    return InteractionResultHolder.sidedSuccess(stack, world.isClientSide);
   }
 
   @Nullable
@@ -81,37 +90,28 @@ public class ItemRequestingHalo extends Item implements IManaUsingItem {
   }
 
   @Override
-  public ActionResultType onItemUse(ItemUseContext context) {
-    World world = context.getWorld();
-    BlockPos pos = context.getPos();
+  public InteractionResult useOn(UseOnContext context) {
+    Level world = context.getLevel();
+    BlockPos pos = context.getClickedPos();
     Block block = world.getBlockState(pos).getBlock();
-    if (context.getPlayer() == null)
-      return ActionResultType.PASS;
-    if (!world.isRemote) {
-      if (context.getPlayer().isSneaking()) {
-        String prefix;
-        if (block instanceof BlockCorporeaIndex) {
-          prefix = PREFIX_INDEX_POS;
-        } else if (block instanceof BlockItemQuantizationDevice) {
-          prefix = PREFIX_SENDER_POS;
-        } else {
-          return ActionResultType.CONSUME;
-        }
-        RegistryKey<World> worldKey = world.getDimensionKey();
-        GlobalPos globalPos = GlobalPos.getPosition(worldKey, pos);
-        ItemNBTHelper.set(context.getItem(), prefix, NBTTagHelper.putGlobalPos(globalPos));
-        return ActionResultType.SUCCESS;
+    Player player = context.getPlayer();
+    if (player == null)
+      return InteractionResult.PASS;
+    if (player.isShiftKeyDown()) {
+      String prefix;
+      if (block == BotaniaBlocks.corporeaIndex) {
+        prefix = PREFIX_INDEX_POS;
+      } else if (block instanceof BlockItemQuantizationDevice) {
+        prefix = PREFIX_SENDER_POS;
+      } else {
+        return InteractionResult.CONSUME;
       }
-    } else {
-      if (context.getPlayer().isSneaking()) {
-        if (block instanceof BlockCorporeaIndex || block instanceof BlockItemQuantizationDevice) {
-          return ActionResultType.SUCCESS;
-        } else {
-          return ActionResultType.CONSUME;
-        }
-      }
+
+      GlobalPos globalPos = GlobalPos.of(world.dimension(), pos);
+      ItemNBTHelper.set(context.getItemInHand(), prefix, NBTTagHelper.putGlobalPos(globalPos));
+      return InteractionResult.sidedSuccess(world.isClientSide);
     }
-    return ActionResultType.PASS;
+    return InteractionResult.PASS;
   }
 
   /**
@@ -143,15 +143,15 @@ public class ItemRequestingHalo extends Item implements IManaUsingItem {
     return ItemNBTHelper.getInt(stack, PREFIX_MODULES, 0) != 0;
   }
 
-  public static ListNBT getOrCreateCraftingSlotNBTList(ItemStack halo) {
+  public static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo) {
     boolean didChange = false;
-    ListNBT nbt = ItemNBTHelper.getList(halo, PREFIX_CRAFTING_SLOT_ITEMS, Constants.NBT.TAG_COMPOUND, true);
+    ListTag nbt = ItemNBTHelper.getList(halo, PREFIX_CRAFTING_SLOT_ITEMS, Tag.TAG_COMPOUND, true);
     if (nbt == null) {
-      nbt = new ListNBT();
+      nbt = new ListTag();
       didChange = true;
     }
     for (int i = nbt.size(); i < 9; i++) {
-      nbt.add(new CompoundNBT());
+      nbt.add(new CompoundTag());
     }
     if (didChange)
       ItemNBTHelper.setList(halo, PREFIX_CRAFTING_SLOT_ITEMS, nbt);
@@ -173,14 +173,14 @@ public class ItemRequestingHalo extends Item implements IManaUsingItem {
     Pair<Boolean, ItemStack> addResult = StackHelper.addToAnotherStack(addStack, orgStack);
     orgStack = addResult.getSecond();
 
-    ListNBT list = getOrCreateCraftingSlotNBTList(halo);
+    ListTag list = getOrCreateCraftingSlotNBTList(halo);
     if (addResult.getFirst()) {
       addStackHandler.accept(addStack);
-      list.set(slot, orgStack.write(new CompoundNBT()));
+      list.set(slot, orgStack.save(new CompoundTag()));
     } else {
       replaceHandler.accept(orgStack);
       addStackHandler.accept(ItemStack.EMPTY);
-      list.set(slot, addStack.write(new CompoundNBT()));
+      list.set(slot, addStack.save(new CompoundTag()));
     }
 
     return true;
@@ -190,67 +190,61 @@ public class ItemRequestingHalo extends Item implements IManaUsingItem {
    * This could be called on both client and server
    */
   public static ItemStack getStackInCraftingSlot(ItemStack halo, int slot) {
-    ListNBT list = getOrCreateCraftingSlotNBTList(halo);
-    return ItemStack.read(list.getCompound(slot));
+    ListTag list = getOrCreateCraftingSlotNBTList(halo);
+    return ItemStack.of(list.getCompound(slot));
   }
 
   public static ItemStack setStackInCraftingSlot(ItemStack halo, int slot, ItemStack newStack) {
-    ListNBT list = getOrCreateCraftingSlotNBTList(halo);
-    ItemStack oldStack = ItemStack.read(list.getCompound(slot));
-    list.set(slot, newStack.isEmpty() ? new CompoundNBT() : newStack.write(new CompoundNBT()));
+    ListTag list = getOrCreateCraftingSlotNBTList(halo);
+    ItemStack oldStack = ItemStack.of(list.getCompound(slot));
+    list.set(slot, newStack.isEmpty() ? new CompoundTag() : newStack.save(new CompoundTag()));
     return oldStack;
   }
 
   private String globalPosToString(GlobalPos pos) {
-    return pos.getDimension().getLocation() + " (" + pos.getPos().getCoordinatesAsString() + ")";
+    return pos.dimension().location() + " (" + pos.pos().toShortString() + ")";
   }
 
   @Override
-  public void addInformation(ItemStack stack, @Nullable World worldIn, List<ITextComponent> tooltip, ITooltipFlag flagIn) {
+  public void appendHoverText(ItemStack stack, @Nullable Level worldIn, List<Component> tooltip, TooltipFlag flagIn) {
     GlobalPos indexPos = getBoundIndexPosition(stack);
     GlobalPos senderPos = getBoundSenderPosition(stack);
 
     if (KeyboardHelper.hasShiftDown()) {
       String temp;
-      temp = indexPos == null ? I18n.format(IC.MODID + ".requesting_halo.tooltip.null") : "\n    " + globalPosToString(indexPos);
-      tooltip.add(new StringTextComponent(I18n.format(IC.MODID + ".requesting_halo.tooltip.index_pos") + temp));
+      temp = indexPos == null ? I18n.get(IC.MODID + ".requesting_halo.tooltip.null") : "\n    " + globalPosToString(indexPos);
+      tooltip.add(Component.literal(I18n.get(IC.MODID + ".requesting_halo.tooltip.index_pos") + temp));
 
-      temp = senderPos == null ? I18n.format(IC.MODID + ".requesting_halo.tooltip.null") : "\n    " + globalPosToString(senderPos);
-      tooltip.add(new StringTextComponent(I18n.format(IC.MODID + ".requesting_halo.tooltip.sender_pos") + temp));
+      temp = senderPos == null ? I18n.get(IC.MODID + ".requesting_halo.tooltip.null") : "\n    " + globalPosToString(senderPos);
+      tooltip.add(Component.literal(I18n.get(IC.MODID + ".requesting_halo.tooltip.sender_pos") + temp));
 
       if (ItemRequestingHalo.isAnyModuleInstalled(stack)) {
-        StringBuilder builder = new StringBuilder(I18n.format(IC.MODID + ".requesting_halo.tooltip.modules_prefix"));
+        StringBuilder builder = new StringBuilder(I18n.get(IC.MODID + ".requesting_halo.tooltip.modules_prefix"));
         builder.append("§r| ");
         for (HaloModule module : HaloModule.values()) {
           boolean installed = isModuleInstalled(stack, module);
           builder.append(installed ? "§6" : "§8");
-          builder.append(I18n.format(module.translationKey));
+          builder.append(I18n.get(module.translationKey));
           builder.append("§r | ");
         }
-        tooltip.add(new StringTextComponent(builder.toString()));
+        tooltip.add(Component.literal(builder.toString()));
       } else {
-        tooltip.add(new StringTextComponent(
-            I18n.format(IC.MODID + ".requesting_halo.tooltip.modules_prefix") +
-                I18n.format(IC.MODID + ".requesting_halo.tooltip.null")
+        tooltip.add(Component.literal(
+            I18n.get(IC.MODID + ".requesting_halo.tooltip.modules_prefix") +
+                I18n.get(IC.MODID + ".requesting_halo.tooltip.null")
         ));
       }
     } else {
-      tooltip.add(new TranslationTextComponent(IC.MODID + ".tooltip.shift_for_more"));
+      tooltip.add(Component.translatable(IC.MODID + ".tooltip.shift_for_more"));
     }
   }
 
   @Override
-  public boolean canPlayerBreakBlockWhileHolding(BlockState bs, World world, BlockPos pos, PlayerEntity player) {
+  public boolean canAttackBlock(BlockState bs, Level world, BlockPos pos, Player player) {
     return false;
   }
 
-  @Override
   public boolean usesMana(ItemStack stack) {
     return true;
-  }
-
-  @Override
-  public boolean shouldSyncTag() {
-    return super.shouldSyncTag();
   }
 }

@@ -1,43 +1,70 @@
 package shblock.interactivecorporea.client.render;
 
-import net.minecraft.client.renderer.RenderState;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
 import shblock.interactivecorporea.IC;
-import vazkii.botania.mixin.AccessorRenderState;
+import vazkii.botania.mixin.client.RenderTypeAccessor;
 
-import static org.lwjgl.opengl.GL44.*;
+public class ModRenderTypes extends RenderStateShard {
+    public static final RenderType halo = RenderTypeAccessor.create(
+            IC.MODID + "_halo",
+            DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.TRIANGLE_STRIP,
+            64,
+            false,
+            false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(POSITION_COLOR_SHADER)
+                    .setCullState(NO_CULL)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .createCompositeState(false)
+    );
 
-public class ModRenderTypes {
-  public static RenderType halo = RenderType.makeType(
-      IC.MODID + "_halo",
-      DefaultVertexFormats.POSITION_COLOR,
-      GL_QUAD_STRIP,
-      64, false, false,
-      RenderType.State.getBuilder()
-          .cull(new RenderState.CullState(false))
-          .transparency(AccessorRenderState.getTranslucentTransparency())
-          .build(false)
-  );
+    public static final RenderType craftingBg = RenderTypeAccessor.create(
+            IC.MODID + "_crafting_bg",
+            DefaultVertexFormat.POSITION_COLOR_TEX,
+            VertexFormat.Mode.QUADS,
+            16,
+            false,
+            false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(POSITION_COLOR_TEX_SHADER)
+                    .setCullState(NO_CULL)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .createCompositeState(false)
+    );
 
-  public static RenderType craftingBg = RenderType.makeType(
-      IC.MODID + "_crafting_bg",
-      DefaultVertexFormats.POSITION_COLOR_TEX,
-      GL_QUADS,
-      16, false, false,
-      RenderType.State.getBuilder()
-          .cull(new RenderState.CullState(false))
-          .transparency(AccessorRenderState.getTranslucentTransparency())
-          .build(false)
-  );
+    public static final RenderType craftingSlotBg = RenderTypeAccessor.create(
+            IC.MODID + "_crafting_slot_bg",
+            DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.QUADS,
+            16,
+            false,
+            false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(POSITION_COLOR_SHADER)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .createCompositeState(false)
+    );
 
-  public static RenderType craftingSlotBg = RenderType.makeType(
-      IC.MODID + "_crafting_slot_bg",
-      DefaultVertexFormats.POSITION_COLOR,
-      GL_QUADS,
-      16, false, false,
-      RenderType.State.getBuilder()
-          .transparency(AccessorRenderState.getTranslucentTransparency())
-          .build(false)
-  );
+    public static final RenderType star = RenderTypeAccessor.create(
+            IC.MODID + "_star",
+            DefaultVertexFormat.POSITION_COLOR,
+            VertexFormat.Mode.TRIANGLES,
+            256,
+            false,
+            false,
+            RenderType.CompositeState.builder()
+                    .setShaderState(POSITION_COLOR_SHADER)
+                    .setCullState(NO_CULL)
+                    .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+                    .createCompositeState(false)
+    );
+
+    private ModRenderTypes() {
+        super("interactive_corporea_render_types", () -> {}, () -> {});
+        throw new UnsupportedOperationException("Static helper class");
+    }
 }

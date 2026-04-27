@@ -1,7 +1,7 @@
 package shblock.interactivecorporea.common.util;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
@@ -9,6 +9,7 @@ import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 
 import java.util.Map;
 
+@SuppressWarnings("removal")
 public class CuriosHelper {
   public static ItemStack getPointedSlot(LivingEntity entity, CurioSlotPointer pointer) {
     ICuriosItemHandler handler = CuriosApi.getCuriosHelper().getCuriosHandler(entity).orElse(null);

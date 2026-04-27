@@ -1,9 +1,9 @@
 package shblock.interactivecorporea.common.requestinghalo;
 
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.world.server.ServerWorld;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -21,15 +21,15 @@ import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = IC.MODID)
 public class HaloAttractServerHandler {
-  private static final Map<PlayerEntity, List<ItemEntity>> attractedItems = new HashMap<>();
+  private static final Map<Player, List<ItemEntity>> attractedItems = new HashMap<>();
 
   @SubscribeEvent
   public static void onTick(TickEvent.ServerTickEvent event) {
-    for (Map.Entry<PlayerEntity, List<ItemEntity>> entry : attractedItems.entrySet()) {
-      PlayerEntity player = entry.getKey();
+    for (Map.Entry<Player, List<ItemEntity>> entry : attractedItems.entrySet()) {
+      Player player = entry.getKey();
       List<ItemEntity> list = entry.getValue();
       if (player.isAlive()) {
-        Vector3 pos = new Vector3(player.getPosX(), player.getPosY() + .75, player.getPosZ());
+        Vector3 pos = new Vector3(player.getX(), player.getY() + .75, player.getZ());
         for (int i = list.size() - 1; i >= 0; i--) {
           ItemEntity item = list.get(i);
           if (!item.isAlive()) {
@@ -45,22 +45,23 @@ public class HaloAttractServerHandler {
 
   private static void doAttract(Vector3 pos, ItemEntity item) {
     MathHelper.setEntityMotionFromVector(item, pos, 0.3F);
-    item.velocityChanged = true;
+    item.hasImpulse = true;
+    item.hurtMarked = true;
 
-    ServerWorld world = (ServerWorld) item.world;
-    boolean red = item.world.rand.nextBoolean();
+    ServerLevel world = (ServerLevel) item.level();
+    boolean red = world.getRandom().nextBoolean();
     float r = red ? 1F : 0F;
     float b = red ? 0F : 1F;
-    world.spawnParticle(
+    world.sendParticles(
         SparkleParticleData.sparkle(3F, r, 0, b, 10),
-        item.getPosX(),
-        item.getPosY() + .2,
-        item.getPosZ(),
+        item.getX(),
+        item.getY() + .2,
+        item.getZ(),
         1, .1, .1, .1, 1F
     );
   }
 
-  public static void addToAttractedItems(PlayerEntity player, ItemEntity item) {
+  public static void addToAttractedItems(Player player, ItemEntity item) {
     List<ItemEntity> list = attractedItems.computeIfAbsent(player, k -> new ArrayList<>());
     list.add(item);
   }
@@ -68,7 +69,7 @@ public class HaloAttractServerHandler {
   /**
    * @return if the item was attracted (if the halo has the magnate module)
    */
-  public static boolean attractIfHasModule(PlayerEntity player, ItemEntity item, ItemStack halo) {
+  public static boolean attractIfHasModule(Player player, ItemEntity item, ItemStack halo) {
     if (ItemRequestingHalo.isModuleInstalled(halo, HaloModule.MAGNATE)) {
       addToAttractedItems(player, item);
       return true;

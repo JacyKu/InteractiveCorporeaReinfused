@@ -1,23 +1,22 @@
 package shblock.interactivecorporea.client.render.shader;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.TextureUtil;
-import net.minecraft.resources.IReloadableResourceManager;
-import net.minecraft.resources.IResourceManager;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.resource.IResourceType;
-import net.minecraftforge.resource.ISelectiveResourceReloadListener;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.resources.ReloadableResourceManager;
+import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import shblock.interactivecorporea.IC;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import static org.lwjgl.opengl.GL11.GL_FALSE;
 import static org.lwjgl.opengl.GL20.*;
 
-public class SimpleShaderProgram implements ISelectiveResourceReloadListener {
+public class SimpleShaderProgram implements ResourceManagerReloadListener {
   private static final Minecraft mc = Minecraft.getInstance();
   private static final String PREFIX = "shaders/";
 
@@ -41,9 +40,9 @@ public class SimpleShaderProgram implements ISelectiveResourceReloadListener {
     }
     fragmentLocation = new ResourceLocation(IC.MODID, PREFIX + fragLoc + ".frag");
     this.reloadCallback = reloadCallback;
-    IResourceManager resourceManager = mc.getResourceManager();
-    if (resourceManager instanceof IReloadableResourceManager) {
-      ((IReloadableResourceManager) resourceManager).addReloadListener(this);
+    ResourceManager resourceManager = mc.getResourceManager();
+    if (resourceManager instanceof ReloadableResourceManager) {
+      ((ReloadableResourceManager) resourceManager).registerReloadListener(this);
     }
 
     try {
@@ -57,14 +56,14 @@ public class SimpleShaderProgram implements ISelectiveResourceReloadListener {
     this(null, fragLoc, reloadCallback);
   }
 
-  private void load(IResourceManager resourceManager) throws IOException {
+  private void load(ResourceManager resourceManager) throws IOException {
 //    if (vert != 0) glDeleteShader(vert);
 //    if (frag != 0) glDeleteShader(frag);
 //    if (program != 0) glDeleteProgram(program);
 
     if (hasVert) {
       vert = glCreateShader(GL_VERTEX_SHADER);
-      glShaderSource(vert, TextureUtil.readResourceAsString(resourceManager.getResource(vertexLocation).getInputStream()));
+      glShaderSource(vert, readShaderSource(resourceManager, vertexLocation));
       glCompileShader(vert);
       if (glGetShaderi(vert, GL_COMPILE_STATUS) == GL_FALSE) {
         String info = glGetShaderInfoLog(vert);
@@ -74,7 +73,7 @@ public class SimpleShaderProgram implements ISelectiveResourceReloadListener {
     }
 
     frag = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(frag, TextureUtil.readResourceAsString(resourceManager.getResource(fragmentLocation).getInputStream()));
+    glShaderSource(frag, readShaderSource(resourceManager, fragmentLocation));
     glCompileShader(frag);
     if (glGetShaderi(frag, GL_COMPILE_STATUS) == GL_FALSE) {
       String info = glGetShaderInfoLog(frag);
@@ -94,7 +93,15 @@ public class SimpleShaderProgram implements ISelectiveResourceReloadListener {
       throw new IOException("Shader " + fragmentLocation + " linking failed:\n" + info);
     }
 
-    reloadCallback.accept(this);
+    if (reloadCallback != null) {
+      reloadCallback.accept(this);
+    }
+  }
+
+  private static String readShaderSource(ResourceManager resourceManager, ResourceLocation location) throws IOException {
+    try (InputStream stream = resourceManager.open(location)) {
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+    }
   }
 
   public int getUniformLocation(String name) {
@@ -110,7 +117,7 @@ public class SimpleShaderProgram implements ISelectiveResourceReloadListener {
   }
 
   @Override
-  public void onResourceManagerReload(IResourceManager resourceManager, Predicate<IResourceType> resourcePredicate) {
+  public void onResourceManagerReload(ResourceManager resourceManager) {
     try {
       load(resourceManager);
     } catch (IOException e) {

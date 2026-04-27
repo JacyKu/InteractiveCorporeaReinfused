@@ -1,31 +1,26 @@
 package shblock.interactivecorporea.client.requestinghalo.crafting;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.IVertexBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.IRenderTypeBuffer;
-import net.minecraft.client.renderer.ItemRenderer;
-import net.minecraft.client.renderer.RenderHelper;
-import net.minecraft.client.renderer.model.IBakedModel;
-import net.minecraft.client.renderer.model.ItemCameraTransforms;
-import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.CraftingInventory;
-import net.minecraft.inventory.container.Container;
-import net.minecraft.inventory.container.ContainerType;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.ICraftingRecipe;
-import net.minecraft.item.crafting.IRecipeType;
-import net.minecraft.item.crafting.RecipeManager;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.ListNBT;
-import net.minecraft.util.NonNullList;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.TransientCraftingContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.RecipeManager;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.core.NonNullList;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.math.vector.Vector3f;
-import net.minecraftforge.common.util.Constants;
 import shblock.interactivecorporea.client.jei.DummyTransferringGui;
 import shblock.interactivecorporea.client.render.ModRenderTypes;
 import shblock.interactivecorporea.client.render.RenderUtil;
@@ -38,7 +33,6 @@ import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.MathUtil;
 import shblock.interactivecorporea.common.util.StackHelper;
 import shblock.interactivecorporea.common.util.Vec2d;
-import vazkii.botania.client.core.handler.ClientTickHandler;
 import vazkii.botania.common.core.helper.ItemNBTHelper;
 import vazkii.botania.common.core.helper.Vector3;
 
@@ -88,7 +82,7 @@ public class HaloCraftingInterface {
   private double edgeFlowingTime = 0;
 
   private final CraftingInterfaceSlot[] slots = new CraftingInterfaceSlot[9];
-  private ICraftingRecipe currentRecipe = null;
+  private CraftingRecipe currentRecipe = null;
   private ItemStack currentOutput = ItemStack.EMPTY;
   private NonNullList<ItemStack> currentRemainingItems = NonNullList.withSize(9, ItemStack.EMPTY);
   private double craftingOutputAnimation = 0;
@@ -98,9 +92,9 @@ public class HaloCraftingInterface {
     this.haloItemSlot = haloItemSlot;
     this.haloStack = haloStack;
 
-    ListNBT shadowNBTList = getOrCreateListNBTForShadow();
+    ListTag shadowNBTList = getOrCreateListNBTForShadow();
     for (int i = 0; i < 9; i++) {
-      slots[i] = new CraftingInterfaceSlot(this, i, ItemStack.read(shadowNBTList.getCompound(i)));
+      slots[i] = new CraftingInterfaceSlot(this, i, ItemStack.of(shadowNBTList.getCompound(i)));
     }
   }
 
@@ -135,17 +129,17 @@ public class HaloCraftingInterface {
     glUniform1f(Uniforms.MOUSE_OVER_ANIMATION, (float) mouseOverAnimation);
     edgeFlowingTime += RenderTick.delta * (mouseOverAnimation * 1.5 + .5);
     glUniform1f(Uniforms.EDGE_FLOWING_TIME, (float) edgeFlowingTime);
-    IRenderTypeBuffer.Impl buffers = mc.getRenderTypeBuffers().getBufferSource();
-    IVertexBuilder builder = buffers.getBuffer(ModRenderTypes.craftingBg);
+    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+    VertexConsumer builder = buffers.getBuffer(ModRenderTypes.craftingBg);
     Matrix4f matrix = ms.getLast().getMatrix();
     float r=0F, g=.5F, b=1F, a=.6F;
     float s = (float) (1 + mouseOverFactor * .3);
     glUniform1f(Uniforms.BG_SIZE, s);
-    builder.pos(matrix, +s, 0, +s).color(r, g, b, a).tex(+s, +s).endVertex();
-    builder.pos(matrix, +s, 0, -s).color(r, g, b, a).tex(+s, -s).endVertex();
-    builder.pos(matrix, -s, 0, -s).color(r, g, b, a).tex(-s, -s).endVertex();
-    builder.pos(matrix, -s, 0, +s).color(r, g, b, a).tex(-s, +s).endVertex();
-    buffers.finish(ModRenderTypes.craftingBg);
+    builder.vertex(matrix, +s, 0, +s).color(r, g, b, a).uv(+s, +s).endVertex();
+    builder.vertex(matrix, +s, 0, -s).color(r, g, b, a).uv(+s, -s).endVertex();
+    builder.vertex(matrix, -s, 0, -s).color(r, g, b, a).uv(-s, -s).endVertex();
+    builder.vertex(matrix, -s, 0, +s).color(r, g, b, a).uv(-s, +s).endVertex();
+    buffers.endBatch(ModRenderTypes.craftingBg);
     bgShader.release();
 
     ms.push();
@@ -175,28 +169,18 @@ public class HaloCraftingInterface {
   }
 
   private void renderOutputItem(MatrixStack ms, ItemStack stack, double normalizedScale, double alpha) {
-    IRenderTypeBuffer.Impl buffers = mc.getRenderTypeBuffers().getBufferSource();
     RenderUtil.applyStippling(16, () -> {
-      RenderSystem.pushLightingAttributes();
       ms.push();
       float scale = (float) (3 * (1 - Math.cos(normalizedScale * Math.PI)) / 2);
       ms.scale(scale, scale, scale);
-      ms.translate(0, .2, 0);
-      ms.rotate(Vector3f.YP.rotation((float) (RenderTick.total / 15)));
-      ItemRenderer itemRenderer = mc.getItemRenderer();
-      IBakedModel model = itemRenderer.getItemModelWithOverrides(stack, mc.world, null);
-//        if (model.isGui3d()) {
-//          RenderHelper.setupGui3DDiffuseLighting();
-//        } else {
-      RenderHelper.setupGuiFlatDiffuseLighting();
-//        }
+      ms.translate(0, .02, 0);
+      ms.rotate(Vector3f.XP.rotationDegrees(90));
+      ms.rotate(Vector3f.YP.rotationDegrees(180));
       RenderUtil.applyStippling(alpha * (Math.sin(RenderTick.total / 5) * .2 + .75), () -> {
-        itemRenderer.renderItem(stack, ItemCameraTransforms.TransformType.GROUND, false, ms, buffers, 0xF000F0, OverlayTexture.NO_OVERLAY, model);
-        mc.getRenderTypeBuffers().getBufferSource().finish();
+        RenderUtil.renderFlatItem(ms, stack);
       });
 
       ms.pop();
-      RenderSystem.popAttributes();
     });
   }
 
@@ -210,23 +194,23 @@ public class HaloCraftingInterface {
 
   public boolean tryOpenJei() {
     if (isPointingAtInterface()) {
-      mc.displayGuiScreen(new DummyTransferringGui());
+      mc.setScreen(new DummyTransferringGui());
       return true;
     }
     return false;
   }
 
-  private ListNBT getOrCreateListNBTForShadow() {
-    ListNBT list = ItemNBTHelper.getList(haloStack, "crafting_slot_shadow_items", Constants.NBT.TAG_COMPOUND, false);
+  private ListTag getOrCreateListNBTForShadow() {
+    ListTag list = ItemNBTHelper.getList(haloStack, "crafting_slot_shadow_items", Tag.TAG_COMPOUND, false);
     for (int i = list.size(); i < 9; i++) {
-      list.add(new CompoundNBT());
+      list.add(new CompoundTag());
     }
     return list;
   }
 
   private void saveShadowItemToNBT(int slot, ItemStack shadow) {
-    ListNBT list = getOrCreateListNBTForShadow();
-    list.set(slot, shadow.write(new CompoundNBT()));
+    ListTag list = getOrCreateListNBTForShadow();
+    list.set(slot, shadow.save(new CompoundTag()));
   }
 
   /**
@@ -251,12 +235,12 @@ public class HaloCraftingInterface {
 //  }
 
   public boolean handleSlotInteraction(boolean isPut, @Nullable Vector3 clickWorldPos, @Nullable HaloPickedItem pickedItem) {
-    if (mc.player == null || mc.world == null) return false;
+    if (mc.player == null || mc.level == null) return false;
     if (clickWorldPos == null) return false;
     CraftingInterfaceSlot slot = getPointingSlot();
     if (slot == null) return false;
 
-    ItemStack newStack = mc.player.getHeldItemMainhand();
+    ItemStack newStack = mc.player.getMainHandItem();
     ItemStack shadowStack = slot.getShadowStack();
     ItemStack realStack = slot.getRealStack();
 
@@ -319,12 +303,17 @@ public class HaloCraftingInterface {
 //  }
 
   public void updateRecipe() {
-    if (mc.world == null || mc.player == null) return;
+    if (mc.level == null || mc.player == null) return;
 
-    RecipeManager manager = mc.world.getRecipeManager();
-    CraftingInventory craftingInv = new CraftingInventory(new Container(ContainerType.CRAFTING, -1) {
+    RecipeManager manager = mc.level.getRecipeManager();
+    CraftingContainer craftingInv = new TransientCraftingContainer(new AbstractContainerMenu(MenuType.CRAFTING, -1) {
       @Override
-      public boolean canInteractWith(@Nonnull PlayerEntity player) {
+      public ItemStack quickMoveStack(@Nonnull Player player, int slot) {
+        return ItemStack.EMPTY;
+      }
+
+      @Override
+      public boolean stillValid(@Nonnull Player player) {
         return false;
       }
     }, 3, 3);
@@ -333,23 +322,23 @@ public class HaloCraftingInterface {
       if (stack.isEmpty()) continue;
       stack = stack.copy();
       stack.setCount(1);
-      craftingInv.setInventorySlotContents(i, stack);
+      craftingInv.setItem(i, stack);
     }
 
-    Optional<ICraftingRecipe> recipe = manager.getRecipe(IRecipeType.CRAFTING, craftingInv, mc.world);
+    Optional<CraftingRecipe> recipe = manager.getRecipeFor(RecipeType.CRAFTING, craftingInv, mc.level);
     currentRecipe = recipe.orElse(null);
 
     ItemStack oldOutput = currentOutput.copy();
 
     if (currentRecipe != null) {
-      currentOutput = currentRecipe.getCraftingResult(craftingInv);
+      currentOutput = currentRecipe.assemble(craftingInv, mc.level.registryAccess());
       currentRemainingItems = currentRecipe.getRemainingItems(craftingInv);
     } else {
       currentOutput = ItemStack.EMPTY;
       currentRemainingItems = NonNullList.withSize(9, ItemStack.EMPTY);
     }
 
-    if (!oldOutput.isEmpty() && !ItemStack.areItemStacksEqual(oldOutput, currentOutput)) {
+    if (!oldOutput.isEmpty() && !ItemStack.isSameItemSameTags(oldOutput, currentOutput)) {
       fadingCraftingOutputs.put(oldOutput, 1D);
       craftingOutputAnimation = 0;
     }
@@ -366,7 +355,7 @@ public class HaloCraftingInterface {
   }
 
   @Nullable
-  public ICraftingRecipe getCurrentRecipe() {
+  public CraftingRecipe getCurrentRecipe() {
     return currentRecipe;
   }
 

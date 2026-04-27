@@ -1,10 +1,10 @@
 modLoader="javafml"
-loaderVersion="[36,)"
+loaderVersion="[47,)"
 license="MIT"
 
 [[mods]]
 modId="interactive_corporea"
-version="1.4"
+version="${version}"
 displayName="Interactive Corporea"
 logoFile="icon.png"
 authors="shBLOCK"
@@ -18,18 +18,18 @@ configBackground="botania:textures/block/corporea_block.png" # background for Co
 [[dependencies.interactive_corporea]]
     modId="forge"
     mandatory=true
-    versionRange="[36,)"
+    versionRange="[47.1.3,)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.interactive_corporea]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.16.5,1.17)"
+    versionRange="[1.20.1,1.21)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.interactive_corporea]]
     modId="botania"
     mandatory=true
-    versionRange="[1.16.5-420.1,)"
+    versionRange="[1.20.1-451-FORGE,)"
     ordering="NONE"
     side="BOTH"

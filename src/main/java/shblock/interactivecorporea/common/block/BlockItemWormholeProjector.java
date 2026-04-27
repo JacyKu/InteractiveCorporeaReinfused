@@ -1,28 +1,27 @@
 package shblock.interactivecorporea.common.block;
 
-import net.minecraft.block.AbstractBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.SoundType;
-import net.minecraft.block.material.Material;
-import net.minecraft.state.EnumProperty;
-import net.minecraft.state.StateContainer;
-import net.minecraft.util.IStringSerializable;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.util.StringRepresentable;
+import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
 
 public class BlockItemWormholeProjector extends Block {
   private static final EnumProperty<Type> TYPE = EnumProperty.create("type", Type.class);
 
   public BlockItemWormholeProjector() {
-    super(AbstractBlock.Properties.create(Material.ROCK).hardnessAndResistance(2, 10).sound(SoundType.STONE));
-    setDefaultState(getStateContainer().getBaseState().with(TYPE, Type.BOTTOM));
+    super(BlockBehaviour.Properties.of().strength(2, 10).sound(SoundType.STONE));
+    registerDefaultState(stateDefinition.any().setValue(TYPE, Type.BOTTOM));
   }
 
   @Override
-  protected void fillStateContainer(StateContainer.Builder<Block, BlockState> builder) {
+  protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
     builder.add(TYPE);
   }
 
-  public enum Type implements IStringSerializable {
+  public enum Type implements StringRepresentable {
     TOP("top"),
     BOTTOM("bottom");
 
@@ -37,6 +36,11 @@ public class BlockItemWormholeProjector extends Block {
     }
 
     public String getString() {
+      return this.name;
+    }
+
+    @Override
+    public String getSerializedName() {
       return this.name;
     }
   }

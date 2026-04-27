@@ -1,9 +1,9 @@
 package shblock.interactivecorporea.common.util;
 
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
@@ -12,13 +12,14 @@ import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
 import java.util.Map;
 import java.util.function.Predicate;
 
+@SuppressWarnings("removal")
 public class ToolItemHelper {
   /**
    * Gets the first inventory slot of a player, of which the ItemStack in that slot matches the matcher
    */
-  public static int getFirstMatchedSlotInInventory(PlayerEntity player, Predicate<ItemStack> matcher) {
-    for (int slot = 0; slot < player.inventory.getSizeInventory(); slot++) {
-      ItemStack stack = player.inventory.getStackInSlot(slot);
+  public static int getFirstMatchedSlotInInventory(Player player, Predicate<ItemStack> matcher) {
+    for (int slot = 0; slot < player.getInventory().getContainerSize(); slot++) {
+      ItemStack stack = player.getInventory().getItem(slot);
       if (matcher.test(stack)) {
         return slot;
       }
@@ -26,7 +27,7 @@ public class ToolItemHelper {
     return -1;
   }
 
-  public static int getFirstMatchedSlotInInventory(PlayerEntity player, Class<? extends Item> matcher) {
+  public static int getFirstMatchedSlotInInventory(Player player, Class<? extends Item> matcher) {
     return getFirstMatchedSlotInInventory(player, stack -> stack.getItem().getClass() == matcher);
   }
 

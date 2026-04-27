@@ -1,7 +1,7 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.network.NetworkEvent;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
 
 import java.util.function.Supplier;
@@ -15,11 +15,11 @@ public class SPacketRequestResult {
     this.successAmount = successAmount;
   }
 
-  public static SPacketRequestResult decode(PacketBuffer buf) {
+  public static SPacketRequestResult decode(FriendlyByteBuf buf) {
     return new SPacketRequestResult(buf.readInt(), buf.readInt());
   }
 
-  public void encode(PacketBuffer buf) {
+  public void encode(FriendlyByteBuf buf) {
     buf.writeInt(requestId);
     buf.writeInt(successAmount);
   }

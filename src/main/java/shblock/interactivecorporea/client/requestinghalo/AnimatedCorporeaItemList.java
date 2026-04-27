@@ -1,7 +1,6 @@
 package shblock.interactivecorporea.client.requestinghalo;
 
-import net.minecraft.item.ItemStack;
-import org.lwjgl.system.CallbackI;
+import net.minecraft.world.item.ItemStack;
 import shblock.interactivecorporea.client.util.SearchHelper;
 import shblock.interactivecorporea.common.util.StackHelper;
 import shblock.interactivecorporea.common.util.Vec2i;
@@ -44,11 +43,15 @@ public class AnimatedCorporeaItemList {
 
   public void handleUpdatePacket(List<ItemStack> itemList) {
     stackList = itemList;
-    arrange();
+    arrange(isFirstUpdate);
   }
 
   public void setFilter(String filter) {
     this.filter = filter;
+  }
+
+  public boolean hasItemsMatchingFilter() {
+    return stackList == null || !filter(stackList).isEmpty();
   }
 
   private List<ItemStack> filter(List<ItemStack> list) {
@@ -73,10 +76,14 @@ public class AnimatedCorporeaItemList {
       return sortMode.getSorter().compare(a.getStack(), b.getStack());
     });
 
+    layoutInCurrentOrder();
+  }
+
+  private void layoutInCurrentOrder() {
     int y = 0;
     int x = 0;
     for (AnimatedItemStack stack : animatedList) {
-      if (stack.isRemoved()) break;
+      if (stack.isRemoved()) continue;
       if (!stack.isNew()) {
         stack.moveTo(x, y);
       } else {
@@ -90,7 +97,24 @@ public class AnimatedCorporeaItemList {
     }
   }
 
+  public void sortByAmount() {
+    sortMode = SortMode.AMOUNT;
+    sort();
+  }
+
+  private void sortAndLayout() {
+    sort();
+  }
+
   public void arrange() {
+    arrange(true);
+  }
+
+  private void arrange(boolean updateOrder) {
+    if (stackList == null) {
+      return;
+    }
+
     List<ItemStack> list = filter(stackList);
     for (AnimatedItemStack aniStack : animatedList) {
       ItemStack oldStack = aniStack.getStack();
@@ -102,7 +126,6 @@ public class AnimatedCorporeaItemList {
           if (aniStack.isRemoved()) {
             aniStack.fadeIn();
           }
-          // found the stack with same item type and NBT data in the new list (no changes / amount change)
           if (oldStack.getCount() != stack.getCount()) {
             aniStack.changeAmount(stack.getCount(), animationLength);
           }
@@ -112,13 +135,11 @@ public class AnimatedCorporeaItemList {
         }
       }
       if (!found) {
-        // did not find equal stack in the new list (the stack has been removed)
         aniStack.removeWithAnimation();
       }
     }
 
     for (ItemStack stack : list) {
-      // any stacks that has not been handled (the stack is newly added)
       AnimatedItemStack aniStack = new AnimatedItemStack(stack);
       if (!isFirstUpdate) {
         aniStack.fadeIn();
@@ -126,7 +147,11 @@ public class AnimatedCorporeaItemList {
       animatedList.add(aniStack);
     }
 
-    sort();
+    if (updateOrder) {
+      sortAndLayout();
+    } else {
+      layoutInCurrentOrder();
+    }
 
     isFirstUpdate = false;
   }
@@ -151,7 +176,15 @@ public class AnimatedCorporeaItemList {
     AnimatedItemStack aniStack = requestIdMap.get(requestId);
     if (aniStack != null && !aniStack.isRemoved()) {
       aniStack.handleRequestResult(successAmount);
+      if (successAmount > 0) {
+        aniStack.shrinkAmount(successAmount, animationLength);
+        if (aniStack.getStack().getCount() <= 0) {
+          aniStack.removeWithAnimation();
+          layoutInCurrentOrder();
+        }
+      }
     }
+    requestIdMap.remove(requestId);
   }
 
   public List<AnimatedItemStack> getAnimatedList() {

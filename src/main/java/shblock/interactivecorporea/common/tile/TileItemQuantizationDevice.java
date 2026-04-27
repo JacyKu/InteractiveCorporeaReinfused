@@ -1,16 +1,19 @@
 package shblock.interactivecorporea.common.tile;
 
-import net.minecraft.entity.item.ItemEntity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundNBT;
-import net.minecraft.nbt.INBT;
-import net.minecraft.nbt.ListNBT;
-import net.minecraft.tileentity.ITickableTileEntity;
-import net.minecraft.world.World;
-import net.minecraft.world.server.ServerWorld;
-import net.minecraftforge.common.util.Constants;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.world.level.Level;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.common.util.INBTSerializable;
 import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.client.util.RenderTick;
@@ -23,92 +26,98 @@ import shblock.interactivecorporea.common.requestinghalo.HaloAttractServerHandle
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.NBTTagHelper;
 import shblock.interactivecorporea.common.util.StackHelper;
-import vazkii.botania.api.corporea.ICorporeaResult;
+import vazkii.botania.api.BotaniaForgeCapabilities;
+import vazkii.botania.api.corporea.CorporeaResult;
 import vazkii.botania.api.internal.VanillaPacketDispatcher;
-import vazkii.botania.api.mana.IManaReceiver;
-import vazkii.botania.client.core.handler.ClientTickHandler;
-import vazkii.botania.common.block.tile.corporea.TileCorporeaBase;
-import vazkii.botania.common.block.tile.mana.TilePool;
+import vazkii.botania.api.mana.ManaReceiver;
+import vazkii.botania.common.block.block_entity.corporea.BaseCorporeaBlockEntity;
+import vazkii.botania.common.block.block_entity.mana.ManaPoolBlockEntity;
 import vazkii.botania.common.core.helper.Vector3;
 import vazkii.botania.common.impl.corporea.CorporeaItemStackMatcher;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
-public class TileItemQuantizationDevice extends TileCorporeaBase implements ITickableTileEntity, IManaReceiver {
+public class TileItemQuantizationDevice extends BaseCorporeaBlockEntity implements ManaReceiver {
   private int mana;
+  private LazyOptional<ManaReceiver> manaReceiverCapability = LazyOptional.of(() -> this);
 
   private final List<Sender> senders = new ArrayList<>();
 
-  public TileItemQuantizationDevice() {
-    super(ModTiles.itemQuantizationDevice);
+  public TileItemQuantizationDevice(BlockPos pos, BlockState state) {
+    super(ModTiles.itemQuantizationDevice, pos, state);
   }
 
   public int getManaCost(int itemAmount) {
     return itemAmount * ModConfig.COMMON.quantizationConsumption.get();
   }
 
-  public int requestItem(ItemStack stack, Vector3 requestPos, Vector3 normal, ServerPlayerEntity player, ItemStack halo) {
-    if (world == null) return 0;
-    if (getManaCost(stack.getCount()) > mana) return 0;
-    ICorporeaResult result = CorporeaUtil.requestItemNoIntercept(new CorporeaItemStackMatcher(stack, true), stack.getCount(), getSpark(), true);
-    List<ItemStack> stacks = result.getStacks();
-    if (stacks.isEmpty()) return 0;
+  public int requestItem(ItemStack stack, Vector3 requestPos, Vector3 normal, ServerPlayer player, ItemStack halo) {
+    if (level == null) return 0;
+    int manaCost = getManaCost(stack.getCount());
+    if (manaCost > mana) {
+      return 0;
+    }
+    CorporeaResult result = CorporeaUtil.requestItemNoIntercept(new CorporeaItemStackMatcher(stack, true), stack.getCount(), getSpark(), player, true);
+    List<ItemStack> stacks = result.stacks();
+    if (stacks.isEmpty()) {
+      return 0;
+    }
     ItemStack resultStack = stacks.get(0);
     for (int i = 1; i < stacks.size(); i++) {
       if (StackHelper.equalItemAndTag(resultStack, stacks.get(i))) {
         resultStack.grow(stacks.get(i).getCount());
       } else {
-        world.addEntity(new ItemEntity(world, pos.getX() + .5F, pos.getY() + 1F, pos.getZ() + .5F, stacks.get(i)));
+        level.addFreshEntity(new ItemEntity(level, getBlockPos().getX() + .5F, getBlockPos().getY() + 1F, getBlockPos().getZ() + .5F, stacks.get(i)));
       }
     }
-    Vector3 fromPos = new Vector3(pos.getX() + .5, pos.getY() + .5, pos.getZ() + .5);
-    senders.add(new Sender(resultStack, world, fromPos, requestPos, normal, player, ItemRequestingHalo.isModuleInstalled(halo, HaloModule.MAGNATE)));
-    markDirty();
+    Vector3 fromPos = new Vector3(getBlockPos().getX() + .5, getBlockPos().getY() + .5, getBlockPos().getZ() + .5);
+    senders.add(new Sender(resultStack, level, fromPos, requestPos, normal, player, ItemRequestingHalo.isModuleInstalled(halo, HaloModule.MAGNATE)));
+    setChanged();
     VanillaPacketDispatcher.dispatchTEToNearbyPlayers(this);
     consumeMana(getManaCost(resultStack.getCount()));
     return resultStack.getCount();
   }
 
-  @Override
-  public void tick() {
-    if (world == null) return;
-    if (!world.isRemote) {
+  public static void serverTick(Level level, BlockPos worldPosition, BlockState state, TileItemQuantizationDevice self) {
+    if (self.level == null) return;
+    if (!level.isClientSide) {
       boolean dirty = false;
-      for (int i = senders.size() - 1; i >= 0; i--) {
-        if (senders.get(i).tick()) {
-          senders.remove(i);
+      for (int i = self.senders.size() - 1; i >= 0; i--) {
+        if (self.senders.get(i).tick()) {
+          self.senders.remove(i);
         }
         dirty = true;
-        markDirty();
       }
-      if (dirty)
-        VanillaPacketDispatcher.dispatchTEToNearbyPlayers(this);
+      if (dirty) {
+        self.setChanged();
+        VanillaPacketDispatcher.dispatchTEToNearbyPlayers(self);
+      }
     }
   }
 
   @Override
-  public void readPacketNBT(CompoundNBT cmp) {
+  public void readPacketNBT(CompoundTag cmp) {
     mana = cmp.contains("mana") ? cmp.getInt("mana") : 0;
 
     senders.clear();
-    if (cmp.contains("senders")) {
-      ListNBT listNBT = cmp.getList("senders", Constants.NBT.TAG_COMPOUND);
-      for (INBT nbt : listNBT) {
+    if (cmp.contains("senders", Tag.TAG_LIST)) {
+      ListTag listNBT = cmp.getList("senders", Tag.TAG_COMPOUND);
+      for (Tag nbt : listNBT) {
         Sender sender = new Sender();
-        sender.deserializeNBT((CompoundNBT) nbt);
+        sender.deserializeNBT((CompoundTag) nbt);
         senders.add(sender);
       }
     }
   }
 
   @Override
-  public void writePacketNBT(CompoundNBT cmp) {
+  public void writePacketNBT(CompoundTag cmp) {
     cmp.putInt("mana", mana);
 
-    ListNBT listNBT = new ListNBT();
+    ListTag listNBT = new ListTag();
     for (Sender sender : senders) {
       listNBT.add(sender.serializeNBT());
     }
@@ -136,11 +145,21 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
     if (mana >= getManaCapacity()) {
       mana = getManaCapacity();
     }
-    markDirty();
+    setChanged();
   }
 
   @Override
   public boolean canReceiveManaFromBursts() { return true; }
+
+  @Override
+  public Level getManaReceiverLevel() {
+    return level;
+  }
+
+  @Override
+  public BlockPos getManaReceiverPos() {
+    return getBlockPos();
+  }
 
   @Override
   public int getCurrentMana() {
@@ -152,34 +171,55 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
   }
 
   public int getComparatorLevel() {
-    return TilePool.calculateComparatorLevel(mana, getManaCapacity());
+    return ManaPoolBlockEntity.calculateComparatorLevel(mana, getManaCapacity());
+  }
+
+  @Nonnull
+  @Override
+  public <T> LazyOptional<T> getCapability(@Nonnull Capability<T> cap, @Nullable Direction side) {
+    if (cap == BotaniaForgeCapabilities.MANA_RECEIVER) {
+      return BotaniaForgeCapabilities.MANA_RECEIVER.orEmpty(cap, manaReceiverCapability);
+    }
+    return super.getCapability(cap, side);
+  }
+
+  @Override
+  public void invalidateCaps() {
+    super.invalidateCaps();
+    manaReceiverCapability.invalidate();
+  }
+
+  @Override
+  public void reviveCaps() {
+    super.reviveCaps();
+    manaReceiverCapability = LazyOptional.of(() -> this);
   }
 
   public boolean consumeMana(int consume) {
     if (consume <= mana) {
       mana -= consume;
-      markDirty();
+      setChanged();
       return true;
     }
     return false;
   }
 
-  private static class Sender implements INBTSerializable<CompoundNBT> {
+  private static class Sender implements INBTSerializable<CompoundTag> {
     private int type; // 0: spawn item entity, 1: crafting slot
     private ItemStack stack;
-    private World world;
+    private Level world;
     private Vector3 fromPos;
     private Vector3 pos;
     private Vector3 normal;
-    private int time = ModConfig.COMMON.quantizationAnimationSpeed.get() * 3;
-    private PlayerEntity player;
+    private int time = ModConfig.COMMON.quantizationAnimationSpeed.get() * 2;
+    private Player player;
     private boolean shouldAttract;
     private CISlotPointer haloSlot;
     private int slot;
 
     public Sender() { } // for deserializeNBT
 
-    public Sender(int type, ItemStack stack, World world, Vector3 fromPos, Vector3 pos, Vector3 normal, @Nullable PlayerEntity player, boolean shouldAttract, @Nullable CISlotPointer haloSlot, int slot) {
+    public Sender(int type, ItemStack stack, Level world, Vector3 fromPos, Vector3 pos, Vector3 normal, @Nullable Player player, boolean shouldAttract, @Nullable CISlotPointer haloSlot, int slot) {
       this.type = type;
       this.stack = stack.copy();
       this.world = world;
@@ -195,7 +235,7 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
     /**
      * For spawning item entity
      */
-    public Sender(ItemStack stack, World world, Vector3 fromPos, Vector3 pos, Vector3 normal, @Nullable PlayerEntity player, boolean shouldAttract) {
+    public Sender(ItemStack stack, Level world, Vector3 fromPos, Vector3 pos, Vector3 normal, @Nullable Player player, boolean shouldAttract) {
       this(0, stack, world, fromPos, pos, normal, player, shouldAttract, null, -1);
     }
 
@@ -204,7 +244,7 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
      * @param player used when input failed and spawns item entity
      * @param shouldAttract used when input failed and spawns item entity
      */
-    public Sender(ItemStack stack, World world, Vector3 fromPos, Vector3 pos, @Nullable PlayerEntity player, boolean shouldAttract, @Nullable CISlotPointer haloSlot, int slot) {
+    public Sender(ItemStack stack, Level world, Vector3 fromPos, Vector3 pos, @Nullable Player player, boolean shouldAttract, @Nullable CISlotPointer haloSlot, int slot) {
       this(1, stack, world, fromPos, pos, new Vector3(0, 1, 0), player, shouldAttract, haloSlot, slot);
     }
 
@@ -213,11 +253,11 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
      */
     public boolean tick() {
       int spd = ModConfig.COMMON.quantizationAnimationSpeed.get();
-      if (!world.isRemote) {
-        if (time == spd * 3) { // first tick
-          ModPacketHandler.sendToPlayersInWorld((ServerWorld) world, new SPacketPlayQuantizationEffect(stack, spd * 2, fromPos, 1));
-        } else if (time == spd * 2) {
-          ModPacketHandler.sendToPlayersInWorld((ServerWorld) world, new SPacketPlayQuantizationEffect(stack, spd * 2, pos, normal, 1));
+      if (!world.isClientSide) {
+        if (time == spd * 2) { // first tick
+          ModPacketHandler.sendToPlayersInWorld((ServerLevel) world, new SPacketPlayQuantizationEffect(stack, spd, fromPos, 1));
+        } else if (time == spd) {
+          ModPacketHandler.sendToPlayersInWorld((ServerLevel) world, new SPacketPlayQuantizationEffect(stack, spd, pos, normal, 1));
         } else if (time == 0) {
           onComplete();
         }
@@ -231,17 +271,18 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
     }
 
     @Override
-    public CompoundNBT serializeNBT() {
-      CompoundNBT nbt = new CompoundNBT();
+    public CompoundTag serializeNBT() {
+      CompoundTag nbt = new CompoundTag();
       nbt.putInt("type", type);
-      nbt.put("stack", stack.write(new CompoundNBT()));
+      nbt.put("stack", stack.save(new CompoundTag()));
       NBTTagHelper.putWorld(nbt, "world", world);
       nbt.put("fromPos", NBTTagHelper.putVector3(fromPos));
       nbt.put("pos", NBTTagHelper.putVector3(pos));
       nbt.put("normal", NBTTagHelper.putVector3(normal));
       nbt.putInt("time", time);
-      if (player != null)
-        nbt.putUniqueId("player", player.getUniqueID());
+      if (player != null) {
+        nbt.putUUID("player", player.getUUID());
+      }
       if (type == 1) {
         nbt.put("haloSlot", NBTTagHelper.putCISlot(haloSlot));
         nbt.putInt("craftingSlot", slot);
@@ -251,16 +292,17 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
     }
 
     @Override
-    public void deserializeNBT(CompoundNBT nbt) {
+    public void deserializeNBT(CompoundTag nbt) {
       this.type = nbt.getInt("type");
-      this.stack = ItemStack.read(nbt.getCompound("stack"));
+      this.stack = ItemStack.of(nbt.getCompound("stack"));
       this.world = NBTTagHelper.getWorld(nbt, "world");
       this.fromPos = NBTTagHelper.getVector3(nbt.getCompound("fromPos"));
       this.pos = NBTTagHelper.getVector3(nbt.getCompound("pos"));
       this.normal = NBTTagHelper.getVector3(nbt.getCompound("normal"));
       this.time = nbt.getInt("time");
-      if (nbt.contains("player"))
-        player = world.getPlayerByUuid(nbt.getUniqueId("player"));
+      if (nbt.hasUUID("player")) {
+        player = world.getPlayerByUUID(nbt.getUUID("player"));
+      }
       if (type == 1) {
         haloSlot = NBTTagHelper.getCISlot(nbt.getCompound("haloSlot"));
         slot = nbt.getInt("craftingSlot");
@@ -298,8 +340,8 @@ public class TileItemQuantizationDevice extends TileCorporeaBase implements ITic
         spawnStack.setCount(cnt);
         stack.shrink(cnt);
         ItemEntity entity = new ItemEntity(world, pos.x, pos.y, pos.z, spawnStack);
-        entity.setMotion(0, 0, 0);
-        world.addEntity(entity);
+        entity.setDeltaMovement(0, 0, 0);
+        world.addFreshEntity(entity);
 
         if (shouldAttract && (player != null)) {
           HaloAttractServerHandler.addToAttractedItems(player, entity);

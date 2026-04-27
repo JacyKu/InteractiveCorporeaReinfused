@@ -1,9 +1,8 @@
 package shblock.interactivecorporea.common.network;
 
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.PacketBuffer;
-import net.minecraftforge.fml.network.NetworkEvent;
-import shblock.interactivecorporea.IC;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
 import shblock.interactivecorporea.common.util.NetworkHelper;
 
@@ -18,7 +17,7 @@ public class SPacketUpdateItemList {
     this.itemList = itemList;
   }
 
-  public static SPacketUpdateItemList decode(PacketBuffer buf) {
+  public static SPacketUpdateItemList decode(FriendlyByteBuf buf) {
     int len = buf.readVarInt();
     List<ItemStack> itemList = new ArrayList<>();
     for (int i = 0; i < len; i++) {
@@ -27,7 +26,7 @@ public class SPacketUpdateItemList {
     return new SPacketUpdateItemList(itemList);
   }
 
-  public void encode(PacketBuffer buf) {
+  public void encode(FriendlyByteBuf buf) {
     buf.writeVarInt(itemList.size());
     for (ItemStack stack : itemList) {
       NetworkHelper.writeBigStack(buf, stack, false);
@@ -36,7 +35,6 @@ public class SPacketUpdateItemList {
 
   public void handle(Supplier<NetworkEvent.Context> ctx) {
     ctx.get().enqueueWork(() -> {
-      IC.debug("Update packet received");
       RequestingHaloInterfaceHandler.handleUpdatePacket(itemList);
     });
     ctx.get().setPacketHandled(true);

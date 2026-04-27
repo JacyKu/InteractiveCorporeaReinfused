@@ -1,7 +1,7 @@
 package shblock.interactivecorporea.common.util;
 
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 
 /**
  * Represents either an inventory slot or a curio slot
@@ -34,9 +34,9 @@ public class CISlotPointer {
     return cSlot;
   }
 
-  public ItemStack getStack(PlayerEntity player) {
+  public ItemStack getStack(Player player) {
     if (slot != -1) {
-      return player.inventory.getStackInSlot(slot);
+      return player.getInventory().getItem(slot);
     } else {
       return CuriosHelper.getPointedSlot(player, cSlot);
     }

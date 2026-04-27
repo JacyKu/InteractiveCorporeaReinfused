@@ -1,35 +1,37 @@
 package shblock.interactivecorporea.common.crafting;
 
-import net.minecraft.inventory.CraftingInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.crafting.IRecipeSerializer;
-import net.minecraft.item.crafting.SpecialRecipe;
-import net.minecraft.item.crafting.SpecialRecipeSerializer;
-import net.minecraft.util.ResourceLocation;
-import net.minecraft.world.World;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.world.inventory.CraftingContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.RecipeSerializer;
+import net.minecraft.world.item.crafting.CustomRecipe;
+import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 
-public class RequestingHaloAddModuleRecipe extends SpecialRecipe {
-  public static final SpecialRecipeSerializer<RequestingHaloAddModuleRecipe> SERIALIZER = new SpecialRecipeSerializer<>(RequestingHaloAddModuleRecipe::new);
+public class RequestingHaloAddModuleRecipe extends CustomRecipe {
+  public static final SimpleCraftingRecipeSerializer<RequestingHaloAddModuleRecipe> SERIALIZER = new SimpleCraftingRecipeSerializer<>(RequestingHaloAddModuleRecipe::new);
 
-  public RequestingHaloAddModuleRecipe(ResourceLocation id) {
-    super(id);
+  public RequestingHaloAddModuleRecipe(ResourceLocation id, CraftingBookCategory category) {
+    super(id, category);
   }
 
   @Override
-  public boolean matches(CraftingInventory inv, World world) {
+  public boolean matches(CraftingContainer inv, Level world) {
     boolean foundHalo = false;
     boolean foundModule = false;
 
-    for (int i = 0; i < inv.getSizeInventory(); i++) {
-      ItemStack stack = inv.getStackInSlot(i);
+    for (int i = 0; i < inv.getContainerSize(); i++) {
+      ItemStack stack = inv.getItem(i);
       if (!stack.isEmpty()) {
         if (stack.getItem() instanceof ItemRequestingHalo) {
           if (foundHalo) return false;
           foundHalo = true;
         } else {
-          if (HaloModule.fromItem(stack.getItem().getRegistryName()) != null) {
+          if (HaloModule.fromItem(stack.getItem()) != null) {
             if (foundModule) return false;
             foundModule = true;
           } else {
@@ -43,18 +45,18 @@ public class RequestingHaloAddModuleRecipe extends SpecialRecipe {
   }
 
   @Override
-  public ItemStack getCraftingResult(CraftingInventory inv) {
+  public ItemStack assemble(CraftingContainer inv, RegistryAccess registries) {
     ItemStack halo = null;
     HaloModule module = null;
 
-    for (int i = 0; i < inv.getSizeInventory(); i++) {
-      ItemStack stack = inv.getStackInSlot(i);
+    for (int i = 0; i < inv.getContainerSize(); i++) {
+      ItemStack stack = inv.getItem(i);
       if (!stack.isEmpty()) {
         if (stack.getItem() instanceof ItemRequestingHalo) {
           if (halo != null) return ItemStack.EMPTY;
           halo = stack.copy();
         } else {
-          HaloModule m = HaloModule.fromItem(stack.getItem().getRegistryName());
+          HaloModule m = HaloModule.fromItem(stack.getItem());
           if (m != null) {
             if (module != null) return ItemStack.EMPTY;
             module = m;
@@ -75,12 +77,12 @@ public class RequestingHaloAddModuleRecipe extends SpecialRecipe {
   }
 
   @Override
-  public boolean canFit(int width, int height) {
+  public boolean canCraftInDimensions(int width, int height) {
     return width * height >= 2;
   }
 
   @Override
-  public IRecipeSerializer<?> getSerializer() {
+  public RecipeSerializer<?> getSerializer() {
     return SERIALIZER;
   }
 }

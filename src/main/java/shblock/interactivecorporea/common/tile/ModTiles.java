@@ -1,9 +1,9 @@
 package shblock.interactivecorporea.common.tile;
 
-import net.minecraft.tileentity.TileEntityType;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import shblock.interactivecorporea.common.block.ModBlocks;
 
 @SuppressWarnings("ConstantConditions")
 public class ModTiles {
-  public static final TileEntityType<TileItemQuantizationDevice> itemQuantizationDevice = TileEntityType.Builder.create(TileItemQuantizationDevice::new, ModBlocks.itemQuantizationDevice).build(null);
+  public static final BlockEntityType<TileItemQuantizationDevice> itemQuantizationDevice = BlockEntityType.Builder.of(TileItemQuantizationDevice::new, ModBlocks.itemQuantizationDevice).build(null);
 }
