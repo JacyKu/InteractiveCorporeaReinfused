@@ -140,7 +140,13 @@ public class ItemRequestingHalo extends Item {
   }
 
   public static boolean isAnyModuleInstalled(ItemStack stack) {
-    return ItemNBTHelper.getInt(stack, PREFIX_MODULES, 0) != 0;
+    int mask = ItemNBTHelper.getInt(stack, PREFIX_MODULES, 0);
+    for (HaloModule module : HaloModule.values()) {
+      if (module.containsThis(mask)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo) {

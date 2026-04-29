@@ -8,28 +8,21 @@ import vazkii.botania.common.item.BotaniaItems;
 import javax.annotation.Nullable;
 
 public enum HaloModule {
-  HUD("hud", BotaniaItems.monocle),
-  RECEIVE("receive", BotaniaBlocks.lightRelayDefault.asItem()),
-  SEARCH("search", BotaniaItems.itemFinder),
-  UPDATE("update", BotaniaBlocks.hourglass.asItem()),
-  AMOUNT_SORT("amount_sort", BotaniaItems.corporeaSparkMaster, false),
-  MAGNATE("magnate", BotaniaItems.magnetRing),
-  CRAFTING("crafting", BotaniaItems.autocraftingHalo);
+  HUD(0, "hud", BotaniaItems.monocle),
+  RECEIVE(1, "receive", BotaniaBlocks.lightRelayDefault.asItem()),
+  SEARCH(2, "search", BotaniaItems.itemFinder),
+  UPDATE(3, "update", BotaniaBlocks.hourglass.asItem()),
+  MAGNATE(5, "magnate", BotaniaItems.magnetRing),
+  CRAFTING(6, "crafting", BotaniaItems.autocraftingHalo);
 
   public final int bitMask;
   public final String translationKey;
   public final Item item;
-  private final boolean craftable;
 
-  HaloModule(String name, Item item) {
-    this(name, item, true);
-  }
-
-  HaloModule(String name, Item item, boolean craftable) {
-    this.bitMask = 1 << ordinal();
+  HaloModule(int bitIndex, String name, Item item) {
+    this.bitMask = 1 << bitIndex;
     this.translationKey = IC.MODID + ".halo_module." + name;
     this.item = item;
-    this.craftable = craftable;
   }
 
   public boolean containsThis(int mask) {
@@ -40,14 +33,10 @@ public enum HaloModule {
     return item;
   }
 
-  public boolean isCraftable() {
-    return craftable;
-  }
-
   @Nullable
   public static HaloModule fromItem(Item item) {
     for (HaloModule module : HaloModule.values()) {
-      if (module.craftable && module.item.equals(item)) {
+      if (module.item.equals(item)) {
         return module;
       }
     }

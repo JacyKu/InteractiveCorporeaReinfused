@@ -15,7 +15,6 @@
   "interactive_corporea.halo_module.receive": "Quantum Receiver",
   "interactive_corporea.halo_module.search": "Search",
   "interactive_corporea.halo_module.update": "Auto Update",
-  "interactive_corporea.halo_module.amount_sort": "Sorting",
 
   "key.interactive_corporea.category": "Interactive Corporea",
   "key.interactive_corporea.requesting_halo": "Open/Close Requesting Halo",

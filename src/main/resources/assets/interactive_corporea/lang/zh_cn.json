@@ -15,7 +15,6 @@
   "interactive_corporea.halo_module.receive": "量子接收器",
   "interactive_corporea.halo_module.search": "搜索",
   "interactive_corporea.halo_module.update": "自动更新",
-  "interactive_corporea.halo_module.amount_sort": "排序",
 
   "key.interactive_corporea.category": "交互式多媒体",
   "key.interactive_corporea.requesting_halo": "打开/关闭 多媒体请求环",
