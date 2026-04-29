@@ -83,6 +83,13 @@ public class CPacketRequestItemListUpdate {
     broadcastRemoteState(player, halo, result == null ? List.of() : result, rotationOffset);
   }
 
+  public static void sendItemListToPlayer(ServerPlayer player, ItemStack halo) {
+    List<ItemStack> result = queryForHalo(player, halo);
+    if (result != null) {
+      ModPacketHandler.sendToPlayer(player, new SPacketUpdateItemList(result));
+    }
+  }
+
   public static void broadcastRemoteClose(ServerPlayer player) {
     REMOTE_ROTATION_OFFSETS.remove(player.getUUID());
     REMOTE_LIST_HEIGHTS.remove(player.getUUID());

@@ -59,6 +59,7 @@ public class CPacketRequestItem {
       int successAmount = qd.requestItem(reqStack, requestPos, normal, player, halo);
 
       ModPacketHandler.sendToPlayer(player, new SPacketRequestResult(requestId, successAmount));
+      CPacketRequestItemListUpdate.sendItemListToPlayer(player, halo);
       CPacketRequestItemListUpdate.broadcastRemoteState(player, halo);
     });
   }

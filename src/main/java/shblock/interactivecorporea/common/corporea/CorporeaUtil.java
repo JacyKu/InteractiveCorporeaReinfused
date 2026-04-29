@@ -2,6 +2,7 @@ package shblock.interactivecorporea.common.corporea;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.world.Container;
 import net.minecraft.world.WorldlyContainerHolder;
 import net.minecraft.world.entity.Entity;
@@ -10,6 +11,7 @@ import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.resources.ResourceLocation;
@@ -165,16 +167,8 @@ public class CorporeaUtil {
   public static List<ItemStack> getAllItemsCompacted(CorporeaSpark spark) {
     CorporeaSpark resolvedSpark = resolveRequestSpark(spark);
     List<ItemStack> result = new ArrayList<>();
+    Set<CorporeaNode> nodes = deduplicateInventoryNodes(getNodesOnNetworkCompat(resolvedSpark));
 
-    for (ItemStack stack : CorporeaHelper.instance().requestItem(ALL_MATCHER, Integer.MAX_VALUE, resolvedSpark, null, false).stacks()) {
-      ItemListHelper.addToListCompacted(result, stack);
-    }
-
-    if (!result.isEmpty()) {
-      return result;
-    }
-
-    Set<CorporeaNode> nodes = getNodesOnNetworkCompat(resolvedSpark);
     CorporeaRequest req = new CorporeaRequestImpl(ALL_MATCHER, Integer.MAX_VALUE, null);
     for (CorporeaNode node : nodes) {
       List<ItemStack> c = node.countItems(req);
@@ -192,8 +186,36 @@ public class CorporeaUtil {
       return result;
     }
 
-    Set<CorporeaNode> nearbyInventoryNodes = collectNearbySameNetworkInventoryNodes(resolvedSpark);
+    Set<CorporeaNode> nearbyInventoryNodes = deduplicateInventoryNodes(collectNearbySameNetworkInventoryNodes(resolvedSpark));
     return scanNodeInventories(nearbyInventoryNodes);
+  }
+
+  private static Set<CorporeaNode> deduplicateInventoryNodes(Set<CorporeaNode> nodes) {
+    Set<CorporeaNode> result = new LinkedHashSet<>();
+    Set<GlobalPos> seenInventories = new LinkedHashSet<>();
+    for (CorporeaNode node : nodes) {
+      GlobalPos key = getInventoryKey(node);
+      if (key == null || seenInventories.add(key)) {
+        result.add(node);
+      }
+    }
+    return result;
+  }
+
+  private static GlobalPos getInventoryKey(CorporeaNode node) {
+    Level world = node.getWorld();
+    BlockPos pos = node.getPos();
+    BlockState blockState = world.getBlockState(pos);
+    BlockEntity blockEntity = world.getBlockEntity(pos);
+
+    if (blockEntity instanceof ChestBlockEntity && blockState.getBlock() instanceof ChestBlock && blockState.hasProperty(ChestBlock.TYPE) && blockState.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
+      BlockPos otherPos = pos.relative(ChestBlock.getConnectedDirection(blockState));
+      if (world.getBlockEntity(otherPos) instanceof ChestBlockEntity) {
+        pos = pos.asLong() <= otherPos.asLong() ? pos : otherPos;
+      }
+    }
+
+    return GlobalPos.of(world.dimension(), pos);
   }
 
   private static List<ItemStack> scanNodeInventories(Set<CorporeaNode> nodes) {
@@ -297,7 +319,7 @@ public class CorporeaUtil {
   // Botania copy from CorporeaHelperImpl: request from corporea without calling interceptors
   public static CorporeaResult requestItemNoIntercept(CorporeaRequestMatcher matcher, int itemCount, CorporeaSpark spark, LivingEntity requestor, boolean doit) {
     List<ItemStack> stacks = new ArrayList<>();
-    Set<CorporeaNode> nodes = getNodesOnNetworkCompat(spark);
+    Set<CorporeaNode> nodes = deduplicateInventoryNodes(getNodesOnNetworkCompat(spark));
     CorporeaRequest request = new CorporeaRequestImpl(matcher, itemCount, requestor);
     for (CorporeaNode node : nodes) {
       if (doit) {
@@ -308,7 +330,7 @@ public class CorporeaUtil {
     }
 
     if (stacks.isEmpty()) {
-      Set<CorporeaNode> nearbyInventoryNodes = collectNearbySameNetworkInventoryNodes(resolveRequestSpark(spark));
+      Set<CorporeaNode> nearbyInventoryNodes = deduplicateInventoryNodes(collectNearbySameNetworkInventoryNodes(resolveRequestSpark(spark)));
       request = new CorporeaRequestImpl(matcher, itemCount, requestor);
       for (CorporeaNode node : nearbyInventoryNodes) {
         if (doit) {
