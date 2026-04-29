@@ -27,7 +27,8 @@ public final class ModConfig {
   public static class Common {
     public final ForgeConfigSpec.IntValue requestingHaloStaticConsumption;
     public final ForgeConfigSpec.IntValue requestingHaloUpdateConsumption;
-    public final ForgeConfigSpec.IntValue quantizationConsumption;
+    public final ForgeConfigSpec.IntValue quantizationExtractConsumption;
+    public final ForgeConfigSpec.IntValue quantizationInsertConsumption;
     public final ForgeConfigSpec.IntValue quantizationDeviceManaCapacity;
 
     public final ForgeConfigSpec.IntValue quantizationAnimationSpeed;
@@ -40,12 +41,15 @@ public final class ModConfig {
       requestingHaloUpdateConsumption = builder
           .comment("Mana consumption when the displayed item list is updated")
           .defineInRange("requestingHaloUpdateConsumption", 10, 0, 100);
-      quantizationConsumption = builder
-          .comment("Mana consumption PER ITEM to quantize items")
-          .defineInRange("quantizationConsumption", 20, 0, 100);
+      quantizationExtractConsumption = builder
+          .comment("Mana consumption PER ITEM to extract items from the network")
+          .defineInRange("quantizationExtractConsumption", 20, 0, 100);
+      quantizationInsertConsumption = builder
+          .comment("Mana consumption PER ITEM to insert items into the network")
+          .defineInRange("quantizationInsertConsumption", 40, 0, 100);
       quantizationDeviceManaCapacity = builder
-          .comment("The mana capacity of the Quantization Device (recommended to be larger than <quantizationConsumption> * 256)")
-          .defineInRange("quantizationDeviceManaCapacity", 10000, 1, Integer.MAX_VALUE);
+          .comment("The mana capacity of the Quantization Device (recommended to be larger than the per-item quantization costs * 256)")
+          .defineInRange("quantizationDeviceManaCapacity", 20000, 1, Integer.MAX_VALUE);
       builder.pop();
 
       builder.push("Animations");

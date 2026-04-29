@@ -51,7 +51,15 @@ public class TileItemQuantizationDevice extends BaseCorporeaBlockEntity implemen
   }
 
   public int getManaCost(int itemAmount) {
-    return itemAmount * ModConfig.COMMON.quantizationConsumption.get();
+    return getExtractManaCost(itemAmount);
+  }
+
+  public int getExtractManaCost(int itemAmount) {
+    return itemAmount * ModConfig.COMMON.quantizationExtractConsumption.get();
+  }
+
+  public int getInsertManaCost(int itemAmount) {
+    return itemAmount * ModConfig.COMMON.quantizationInsertConsumption.get();
   }
 
   public int requestItem(ItemStack stack, Vector3 requestPos, Vector3 normal, ServerPlayer player, ItemStack halo) {
@@ -79,6 +87,39 @@ public class TileItemQuantizationDevice extends BaseCorporeaBlockEntity implemen
     VanillaPacketDispatcher.dispatchTEToNearbyPlayers(this);
     consumeMana(getManaCost(resultStack.getCount()));
     return resultStack.getCount();
+  }
+
+  public ItemStack insertItem(ItemStack stack) {
+    if (level == null || stack.isEmpty()) return stack;
+    if (getSpark() == null) return stack;
+
+    int perItemCost = ModConfig.COMMON.quantizationInsertConsumption.get();
+    int maxByMana = perItemCost <= 0 ? stack.getCount() : Math.min(stack.getCount(), mana / perItemCost);
+    if (maxByMana <= 0) {
+      return stack;
+    }
+
+    ItemStack toInsert = stack.copy();
+    toInsert.setCount(maxByMana);
+    ItemStack insertRemainder = CorporeaUtil.insertItem(getSpark(), toInsert);
+    int inserted = maxByMana - insertRemainder.getCount();
+    if (inserted <= 0) {
+      return stack;
+    }
+
+    consumeMana(getInsertManaCost(inserted));
+    playInsertEffect(stack.copyWithCount(inserted));
+
+    ItemStack result = stack.copy();
+    result.setCount(stack.getCount() - inserted);
+    return result;
+  }
+
+  private void playInsertEffect(ItemStack stack) {
+    if (!(level instanceof ServerLevel serverLevel)) return;
+    int speed = ModConfig.COMMON.quantizationAnimationSpeed.get();
+    Vector3 pos = new Vector3(getBlockPos().getX() + .5, getBlockPos().getY() + .5, getBlockPos().getZ() + .5);
+    ModPacketHandler.sendToPlayersInWorld(serverLevel, new SPacketPlayQuantizationEffect(stack, speed, pos, 1));
   }
 
   public static void serverTick(Level level, BlockPos worldPosition, BlockState state, TileItemQuantizationDevice self) {

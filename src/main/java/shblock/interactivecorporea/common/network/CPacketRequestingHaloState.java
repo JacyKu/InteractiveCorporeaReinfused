@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
+import shblock.interactivecorporea.common.requestinghalo.RequestingHaloServerState;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.NetworkHelper;
 
@@ -40,12 +41,17 @@ public class CPacketRequestingHaloState {
       ServerPlayer player = ctx.get().getSender();
       if (player == null) return;
       if (!open) {
+        RequestingHaloServerState.close(player);
         CPacketRequestItemListUpdate.broadcastRemoteClose(player);
         return;
       }
 
       ItemStack halo = slot.getStack(player);
-      if (!(halo.getItem() instanceof ItemRequestingHalo)) return;
+      if (!(halo.getItem() instanceof ItemRequestingHalo)) {
+        RequestingHaloServerState.close(player);
+        return;
+      }
+      RequestingHaloServerState.open(player, slot);
       CPacketRequestItemListUpdate.broadcastRemoteState(player, halo, rotationOffset);
     });
     ctx.get().setPacketHandled(true);

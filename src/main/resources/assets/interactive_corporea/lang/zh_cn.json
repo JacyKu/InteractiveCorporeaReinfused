@@ -15,6 +15,7 @@
   "interactive_corporea.halo_module.receive": "量子接收器",
   "interactive_corporea.halo_module.search": "搜索",
   "interactive_corporea.halo_module.update": "自动更新",
+  "interactive_corporea.halo_module.quantum_inserter": "量子插入器",
 
   "key.interactive_corporea.category": "交互式多媒体",
   "key.interactive_corporea.requesting_halo": "打开/关闭 多媒体请求环",
@@ -39,6 +40,8 @@
   "interactive_corporea.page.requestingHalo.module.hud": "安装窥魔之镜让你可以看到指向的物品的详细信息,你只需按住\"Alt\".",
   "interactive_corporea.page.requestingHalo.module.update.title": "自动更新",
   "interactive_corporea.page.requestingHalo.module.update": "这个悬浮沙漏可以每秒触发一次物品数量更新,使你可以实时看到网络中物品的变化,但不会改变当前排序.",
+  "interactive_corporea.page.requestingHalo.module.inserter.title": "量子插入器",
+  "interactive_corporea.page.requestingHalo.module.inserter": "安装$(item)传送透镜/$后,请求环可以通过绑定的$(l:ender/quantization_device)量子化设备/$把携带的物品送回多媒体网络. 当界面打开时,按下丢弃键即可尝试插入手持物品. 放不进去的物品,或因量子化设备魔力不足而无法插入的物品,会正常掉落在地上.",
 
   "interactive_corporea.entry.quantization_device": "量子化设备",
   "interactive_corporea.page.quantizationDevice.0": "用$(item)微光/$的力量,这个设备可以把物品分解为很多\"$(thing)量子粒子/$\". 这些粒子非常小和轻,以至于它们可以被瞬间传送到世界中的任何地方,然后在那里被重新组合成原物品.",

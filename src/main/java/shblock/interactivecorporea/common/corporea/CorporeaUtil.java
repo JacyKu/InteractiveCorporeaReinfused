@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.world.Container;
+import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.WorldlyContainerHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.block.Block;
@@ -190,6 +191,20 @@ public class CorporeaUtil {
     return scanNodeInventories(nearbyInventoryNodes);
   }
 
+  public static ItemStack insertItem(CorporeaSpark spark, ItemStack stack) {
+    if (spark == null || stack.isEmpty()) {
+      return stack;
+    }
+
+    CorporeaSpark resolvedSpark = resolveRequestSpark(spark);
+    ItemStack remaining = insertIntoNodes(deduplicateInventoryNodes(getNodesOnNetworkCompat(resolvedSpark)), stack);
+    if (remaining.isEmpty()) {
+      return ItemStack.EMPTY;
+    }
+
+    return insertIntoNodes(deduplicateInventoryNodes(collectNearbySameNetworkInventoryNodes(resolvedSpark)), remaining);
+  }
+
   private static Set<CorporeaNode> deduplicateInventoryNodes(Set<CorporeaNode> nodes) {
     Set<CorporeaNode> result = new LinkedHashSet<>();
     Set<GlobalPos> seenInventories = new LinkedHashSet<>();
@@ -243,6 +258,102 @@ public class CorporeaUtil {
     }
 
     addContainerContents(container, result);
+  }
+
+  private static ItemStack insertIntoNodes(Set<CorporeaNode> nodes, ItemStack stack) {
+    ItemStack remaining = stack.copy();
+    for (CorporeaNode node : nodes) {
+      remaining = insertIntoNode(node, remaining);
+      if (remaining.isEmpty()) {
+        return ItemStack.EMPTY;
+      }
+    }
+    return remaining;
+  }
+
+  private static ItemStack insertIntoNode(CorporeaNode node, ItemStack stack) {
+    Level world = node.getWorld();
+    BlockPos pos = node.getPos();
+    BlockState blockState = world.getBlockState(pos);
+    BlockEntity blockEntity = world.getBlockEntity(pos);
+
+    IItemHandler itemHandler = getItemHandler(blockEntity);
+    if (itemHandler != null) {
+      return insertIntoItemHandler(itemHandler, stack);
+    }
+
+    Container container = getContainer(world, pos, blockState, blockEntity);
+    return container == null ? stack : insertIntoContainer(container, stack);
+  }
+
+  private static ItemStack insertIntoItemHandler(IItemHandler itemHandler, ItemStack stack) {
+    ItemStack remaining = stack.copy();
+    for (int slot = 0; slot < itemHandler.getSlots() && !remaining.isEmpty(); slot++) {
+      remaining = itemHandler.insertItem(slot, remaining, false);
+    }
+    return remaining;
+  }
+
+  private static ItemStack insertIntoContainer(Container container, ItemStack stack) {
+    ItemStack remaining = stack.copy();
+    boolean changed = false;
+    changed |= insertIntoContainerSlots(container, remaining, false);
+    changed |= insertIntoContainerSlots(container, remaining, true);
+    if (changed) {
+      container.setChanged();
+    }
+    return remaining.isEmpty() ? ItemStack.EMPTY : remaining;
+  }
+
+  private static boolean insertIntoContainerSlots(Container container, ItemStack remaining, boolean emptySlotsOnly) {
+    boolean changed = false;
+    for (int slot : getInsertSlots(container)) {
+      if (remaining.isEmpty()) {
+        return changed;
+      }
+      if (!canPlaceItem(container, slot, remaining)) {
+        continue;
+      }
+
+      ItemStack slotStack = container.getItem(slot);
+      if (emptySlotsOnly) {
+        if (!slotStack.isEmpty()) {
+          continue;
+        }
+        int transferred = Math.min(remaining.getCount(), Math.min(remaining.getMaxStackSize(), container.getMaxStackSize()));
+        ItemStack inserted = remaining.copyWithCount(transferred);
+        container.setItem(slot, inserted);
+        remaining.shrink(transferred);
+        changed = true;
+      } else if (ItemStack.isSameItemSameTags(slotStack, remaining)) {
+        int transferred = Math.min(remaining.getCount(), Math.min(slotStack.getMaxStackSize(), container.getMaxStackSize()) - slotStack.getCount());
+        if (transferred > 0) {
+          slotStack.grow(transferred);
+          remaining.shrink(transferred);
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  private static int[] getInsertSlots(Container container) {
+    if (container instanceof WorldlyContainer worldlyContainer) {
+      return worldlyContainer.getSlotsForFace(Direction.UP);
+    }
+
+    int[] slots = new int[container.getContainerSize()];
+    for (int i = 0; i < slots.length; i++) {
+      slots[i] = i;
+    }
+    return slots;
+  }
+
+  private static boolean canPlaceItem(Container container, int slot, ItemStack stack) {
+    if (!container.canPlaceItem(slot, stack)) {
+      return false;
+    }
+    return !(container instanceof WorldlyContainer worldlyContainer) || worldlyContainer.canPlaceItemThroughFace(slot, stack, Direction.UP);
   }
 
   private static void addContainerContents(Container container, List<ItemStack> result) {

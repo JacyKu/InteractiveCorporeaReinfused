@@ -13,7 +13,8 @@ public enum HaloModule {
   SEARCH(2, "search", BotaniaItems.itemFinder),
   UPDATE(3, "update", BotaniaBlocks.hourglass.asItem()),
   MAGNATE(5, "magnate", BotaniaItems.magnetRing),
-  CRAFTING(6, "crafting", BotaniaItems.autocraftingHalo);
+  CRAFTING(6, "crafting", BotaniaItems.autocraftingHalo),
+  QUANTUM_INSERTER(7, "quantum_inserter", BotaniaItems.lensWarp);
 
   public final int bitMask;
   public final String translationKey;

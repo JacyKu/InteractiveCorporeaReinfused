@@ -68,6 +68,12 @@
       "item": "botania:hourglass",
       "title": "interactive_corporea.page.requestingHalo.module.update.title",
       "text": "interactive_corporea.page.requestingHalo.module.update"
+    },
+    {
+      "type": "spotlight",
+      "item": "botania:lens_warp",
+      "title": "interactive_corporea.page.requestingHalo.module.inserter.title",
+      "text": "interactive_corporea.page.requestingHalo.module.inserter"
     }
   ]
 }

@@ -34,6 +34,7 @@ import shblock.interactivecorporea.client.util.RenderTick;
 import shblock.interactivecorporea.common.util.MathUtil;
 import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
+import shblock.interactivecorporea.common.network.CPacketInsertDroppedItem;
 import shblock.interactivecorporea.common.network.ModPacketHandler;
 import shblock.interactivecorporea.common.network.CPacketRequestItem;
 import shblock.interactivecorporea.common.network.CPacketRequestItemListUpdate;
@@ -41,12 +42,8 @@ import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.Ray3;
 import shblock.interactivecorporea.common.util.Vec2d;
 import vazkii.botania.api.mana.ManaItemHandler;
-import vazkii.botania.client.core.handler.ClientTickHandler;
 import vazkii.botania.common.core.helper.ItemNBTHelper;
 import vazkii.botania.common.core.helper.Vector3;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.lwjgl.glfw.GLFW.*;
@@ -709,6 +706,12 @@ public class RequestingHaloInterface {
   public void preKeyEvent(int key, int scanCode, int action, int modifiers) {
     if (isOpenClose()) return;
 
+    if (action == GLFW_PRESS && shouldInsertDroppedItem(key, scanCode)) {
+      ModPacketHandler.sendToServer(new CPacketInsertDroppedItem(slot, KeyboardHelper.hasControlDown()));
+      playSound(ModSounds.quantumSend, 1F);
+      return;
+    }
+
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
       if (Screen.isCopy(key)) {
         searchBar.copy();
@@ -802,6 +805,7 @@ public class RequestingHaloInterface {
 
   public boolean shouldCancelKeyEvent(int key, int scanCode) {
     if (isOpenClose()) return false;
+    if (shouldInsertDroppedItem(key, scanCode)) return true;
     if (!searchBar.isSearching() && RequestingHaloInterfaceHandler.KEY_BINDING.matches(key, scanCode)) return false;
     if (KEY_SEARCH.matches(key, scanCode))
       return false;
@@ -817,6 +821,15 @@ public class RequestingHaloInterface {
         return false;
     }
     return searchBar.isSearching();
+  }
+
+  private boolean shouldInsertDroppedItem(int key, int scanCode) {
+    if (mc.player == null || mc.screen != null || searchBar.isSearching()) return false;
+    if (!mc.options.keyDrop.matches(key, scanCode)) return false;
+    if (!isModuleInstalled(HaloModule.QUANTUM_INSERTER)) return false;
+    if (ItemRequestingHalo.getBoundSenderPosition(haloItem) == null) return false;
+    ItemStack selected = mc.player.getInventory().getSelected();
+    return !selected.isEmpty() && !(selected.getItem() instanceof ItemRequestingHalo);
   }
 
   public void onCharEvent(int codePoint, int modifiers) {
