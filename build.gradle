@@ -38,6 +38,14 @@ legacyForge {
             programArguments.addAll '--username', 'Dev2'
         }
 
+        client3 {
+            client()
+            systemProperty('forge.logging.console.level', 'debug')
+            systemProperty('mixin.env.disableRefMap', 'true')
+            programArguments.addAll '-mixin.config=mixins.interactive_corporea.json'
+            programArguments.addAll '--username', 'Dev3'
+        }
+
         server {
             server()
             systemProperty('forge.logging.console.level', 'debug')
