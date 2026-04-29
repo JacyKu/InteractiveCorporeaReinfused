@@ -10,20 +10,15 @@ I've ported the mod to Forge 1.20.1-47.4.10
 
 ### Known issues
 - The rainbow glow used in the Requesting Halo and in the Quantization Device does not display the rays correctly.
-- Closing the Requesting Halo with Right Click while looking in the air does not work.
-- Adding 2 sparks on one chest causes visual duplication. (might be a Botania issue).
-- Sorting isn't removed from tooltip.
 
 ### Todo
-- Add support for rendering in servers/multiplayer worlds.
-- Add support for sending items back into storage by crafting the Halo with a Warp Lens.
-- Add support for crafting in the Halo.
+- Update example image in Lexica
+- Add support for crafting in the Halo. (maybe)
 - Add a new shaders/looks for the Halo background panel.
-- Remove hourglass module
 - Add range upgrades (be within 10 blocks of a Corporea network, any link of it. Add upgrades: Ring of Magnetization (+10), Ring of Far Reach(+20), Ring of Greater Magnetization(+30), Black Hole Talisman(+50))
+    - play request_old when attempting to open out of range
 - Add CTRL+backspace support for search
 - Add toggle to move Halo with player view angle
-- Fix sidebutton assignment not working (if possible)
 - Fix all remaining import/deprecation errors and warnings.
 
 
