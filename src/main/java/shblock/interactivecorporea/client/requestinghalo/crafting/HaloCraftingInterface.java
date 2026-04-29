@@ -42,14 +42,6 @@ import java.util.*;
 
 import static org.lwjgl.opengl.GL43.*;
 
-//TODO
-// slot mouse over sound effect
-// slot bg color (red if no item in network, blue if no item in network but is in player inventory, green if have item in network)
-// requesting items for craft
-// render 3d floating item model when item arrived
-// crafting animation (when crafting, reverse the edge flowing)
-// if close interface when crafting, drop items
-
 public class HaloCraftingInterface {
   private static final Minecraft mc = Minecraft.getInstance();
   private static final SimpleShaderProgram bgShader = new SimpleShaderProgram("common_120_world", "halo_crafting_bg", Uniforms::init);
@@ -76,7 +68,9 @@ public class HaloCraftingInterface {
   private double pos = 0;
   private double size = 1;
 
-  private Vec2d pointingLocalPos = new Vec2d();
+  private static final Vec2d NOT_POINTING = new Vec2d(Double.NaN, Double.NaN);
+
+  private Vec2d pointingLocalPos = NOT_POINTING;
 
   private double mouseOverAnimation = 0;
   private double edgeFlowingTime = 0;
@@ -187,9 +181,7 @@ public class HaloCraftingInterface {
   public void tick(@Nullable Vec2d worldPos2d) {
     rotationSpd = MathUtil.smoothMovingSpeed(rotation, targetRotation, rotationSpd, .1, .8, .01);
 
-    if (worldPos2d != null) {
-      pointingLocalPos = toLocalPos(worldPos2d);
-    }
+    pointingLocalPos = worldPos2d == null ? NOT_POINTING : toLocalPos(worldPos2d);
   }
 
   public boolean tryOpenJei() {
