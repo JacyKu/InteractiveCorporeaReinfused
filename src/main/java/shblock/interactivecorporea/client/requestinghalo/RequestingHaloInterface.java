@@ -765,7 +765,7 @@ public class RequestingHaloInterface {
         if (searchBar.isSearching()) {
           switch (key) {
             case GLFW_KEY_BACKSPACE:
-              searchBar.backspace();
+              searchBar.backspace(KeyboardHelper.hasControlDown());
               break;
             case GLFW_KEY_DELETE:
               searchBar.delete();

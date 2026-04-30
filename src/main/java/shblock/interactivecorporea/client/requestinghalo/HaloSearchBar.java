@@ -1,7 +1,6 @@
 package shblock.interactivecorporea.client.requestinghalo;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.math.MathHelper;
 import shblock.interactivecorporea.client.render.RenderUtil;
@@ -101,21 +100,39 @@ public class HaloSearchBar {
   }
 
   public void backspace() {
+    backspace(false);
+  }
+
+  public void backspace(boolean deleteWord) {
     if (!isSearching()) return;
 
+    if (selectionStart != selectionEnd) {
+      if (deleteSelectedRegion()) {
+        updateSearch();
+      }
+      return;
+    }
+
     if (selectionEnd <= searchString.length() && !searchString.isEmpty() && selectionEnd != 0) {
-      if (selectionStart == selectionEnd) {
-        searchString = searchString.substring(0, selectionEnd - 1) + searchString.substring(selectionEnd);
-        selectionEnd--;
-        selectionStart--;
+      int start = deleteWord ? getPreviousWordStart(selectionEnd) : selectionEnd - 1;
+      if (deleteRegion(start, selectionEnd)) {
+        selectionEnd = start;
+        selectionStart = selectionEnd;
         fixSelection();
         updateSearch();
-      } else {
-        if (deleteSelectedRegion()) {
-          updateSearch();
-        }
       }
     }
+  }
+
+  private int getPreviousWordStart(int pos) {
+    int index = MathHelper.clamp(pos, 0, searchString.length());
+    while (index > 0 && Character.isWhitespace(searchString.charAt(index - 1))) {
+      index--;
+    }
+    while (index > 0 && !Character.isWhitespace(searchString.charAt(index - 1))) {
+      index--;
+    }
+    return index;
   }
 
   /**
