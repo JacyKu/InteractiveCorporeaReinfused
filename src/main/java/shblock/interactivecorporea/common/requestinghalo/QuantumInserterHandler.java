@@ -66,6 +66,10 @@ public class QuantumInserterHandler {
     if (!canUseQuantumInserter(halo) || stack.isEmpty() || stack.getItem() instanceof ItemRequestingHalo) {
       return stack;
     }
+    if (!ItemRequestingHalo.canPlayerAccessNetwork(player, halo)) {
+      player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.haloOutOfRange, SoundSource.PLAYERS, 1F, 1F);
+      return stack;
+    }
 
     TileItemQuantizationDevice device = getBoundDevice(player, halo);
     if (device == null) {

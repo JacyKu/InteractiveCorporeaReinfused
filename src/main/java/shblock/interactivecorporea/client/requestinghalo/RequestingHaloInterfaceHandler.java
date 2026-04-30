@@ -9,6 +9,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.sounds.SoundSource;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.*;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
@@ -141,10 +142,21 @@ public class RequestingHaloInterfaceHandler {
   public static boolean tryOpen(Player player) {
     CISlotPointer slot = getFirstHaloSlot(player);
     if (slot != null) {
+      ItemStack halo = slot.getStack(player);
+      if (!ItemRequestingHalo.canPlayerAccessNetwork(player, halo)) {
+        playOutOfRangeSound(player);
+        return false;
+      }
       openInterface(new RequestingHaloInterface(slot));
       return true;
     }
     return false;
+  }
+
+  private static void playOutOfRangeSound(Player player) {
+    if (mc.level != null) {
+      mc.level.playLocalSound(player.getX(), player.getY(), player.getZ(), ModSounds.haloOutOfRange, SoundSource.PLAYERS, 1F, 1F, false);
+    }
   }
 
   /**

@@ -10,6 +10,7 @@ public class ModSounds {
   public static final SoundEvent haloSelect = create("halo.select");
   public static final SoundEvent haloRequest = create("halo.request");
   public static final SoundEvent haloReachEdge = create("halo.reach_edge");
+  public static final SoundEvent haloOutOfRange = create("halo.out_of_range");
   public static final SoundEvent quantumSend = create("quantum.send");
   public static final SoundEvent quantumReceive = create("quantum.receive");
 

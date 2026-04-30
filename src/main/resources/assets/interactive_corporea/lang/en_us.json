@@ -15,7 +15,13 @@
   "interactive_corporea.halo_module.receive": "Quantum Receiver",
   "interactive_corporea.halo_module.search": "Search",
   "interactive_corporea.halo_module.update": "Auto Update",
+  "interactive_corporea.halo_module.magnate": "Ring of Magnetization",
+  "interactive_corporea.halo_module.crafting": "Crafting",
   "interactive_corporea.halo_module.quantum_inserter": "Quantum Inserter",
+  "interactive_corporea.halo_module.far_reach": "Ring of Far Reach",
+  "interactive_corporea.halo_module.greater_magnate": "Greater Ring of Magnetization",
+  "interactive_corporea.halo_module.black_hole": "Black Hole Talisman",
+  "interactive_corporea.halo_module.range": "Range module: +%s",
 
   "key.interactive_corporea.category": "Interactive Corporea",
   "key.interactive_corporea.requesting_halo": "Open/Close Requesting Halo",
@@ -53,6 +59,7 @@
   "interactive_corporea.subtitle.halo.select": "Halo Interface: Select",
   "interactive_corporea.subtitle.halo.request": "Halo Interface: Request",
   "interactive_corporea.subtitle.halo.reach_edge": "Halo Interface: Reach Edge",
+  "interactive_corporea.subtitle.halo.out_of_range": "Halo Interface: Out of Range",
   "interactive_corporea.subtitle.quantum.send": "Quantize Send",
   "interactive_corporea.subtitle.quantum.receive": "Quantize Receive"
 }

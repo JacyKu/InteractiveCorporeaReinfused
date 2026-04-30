@@ -64,6 +64,7 @@ public class RegistryHandler {
       event.register(Registries.SOUND_EVENT, id("halo.select"), () -> ModSounds.haloSelect);
       event.register(Registries.SOUND_EVENT, id("halo.request"), () -> ModSounds.haloRequest);
       event.register(Registries.SOUND_EVENT, id("halo.reach_edge"), () -> ModSounds.haloReachEdge);
+      event.register(Registries.SOUND_EVENT, id("halo.out_of_range"), () -> ModSounds.haloOutOfRange);
       event.register(Registries.SOUND_EVENT, id("quantum.send"), () -> ModSounds.quantumSend);
       event.register(Registries.SOUND_EVENT, id("quantum.receive"), () -> ModSounds.quantumReceive);
     }

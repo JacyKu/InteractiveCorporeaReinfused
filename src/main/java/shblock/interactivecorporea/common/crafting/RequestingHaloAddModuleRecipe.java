@@ -12,6 +12,9 @@ import net.minecraft.world.level.Level;
 import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class RequestingHaloAddModuleRecipe extends CustomRecipe {
   public static final SimpleCraftingRecipeSerializer<RequestingHaloAddModuleRecipe> SERIALIZER = new SimpleCraftingRecipeSerializer<>(RequestingHaloAddModuleRecipe::new);
 
@@ -21,56 +24,38 @@ public class RequestingHaloAddModuleRecipe extends CustomRecipe {
 
   @Override
   public boolean matches(CraftingContainer inv, Level world) {
-    boolean foundHalo = false;
-    boolean foundModule = false;
-
-    for (int i = 0; i < inv.getContainerSize(); i++) {
-      ItemStack stack = inv.getItem(i);
-      if (!stack.isEmpty()) {
-        if (stack.getItem() instanceof ItemRequestingHalo) {
-          if (foundHalo) return false;
-          foundHalo = true;
-        } else {
-          if (HaloModule.fromItem(stack.getItem()) != null) {
-            if (foundModule) return false;
-            foundModule = true;
-          } else {
-            return false;
-          }
-        }
-      }
-    }
-
-    return foundHalo && foundModule;
+    return !assembleInternal(inv).isEmpty();
   }
 
   @Override
   public ItemStack assemble(CraftingContainer inv, RegistryAccess registries) {
-    ItemStack halo = null;
-    HaloModule module = null;
+    return assembleInternal(inv);
+  }
+
+  private static ItemStack assembleInternal(CraftingContainer inv) {
+    ItemStack halo = ItemStack.EMPTY;
+    List<HaloModule> modules = new ArrayList<>();
 
     for (int i = 0; i < inv.getContainerSize(); i++) {
       ItemStack stack = inv.getItem(i);
       if (!stack.isEmpty()) {
         if (stack.getItem() instanceof ItemRequestingHalo) {
-          if (halo != null) return ItemStack.EMPTY;
+          if (!halo.isEmpty()) return ItemStack.EMPTY;
           halo = stack.copy();
         } else {
-          HaloModule m = HaloModule.fromItem(stack.getItem());
-          if (m != null) {
-            if (module != null) return ItemStack.EMPTY;
-            module = m;
-          } else {
-            return ItemStack.EMPTY;
-          }
+          HaloModule module = HaloModule.fromItem(stack.getItem());
+          if (module == null) return ItemStack.EMPTY;
+          modules.add(module);
         }
       }
     }
 
-    if (halo == null || module == null) return ItemStack.EMPTY;
+    if (halo.isEmpty() || modules.isEmpty()) return ItemStack.EMPTY;
 
-    if (!ItemRequestingHalo.installModule(halo, module)) {
-      return ItemStack.EMPTY;
+    for (HaloModule module : modules) {
+      if (!ItemRequestingHalo.installModule(halo, module)) {
+        return ItemStack.EMPTY;
+      }
     }
 
     return halo;

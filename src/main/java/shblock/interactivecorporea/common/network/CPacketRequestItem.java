@@ -48,6 +48,7 @@ public class CPacketRequestItem {
       if (player == null) return;
       ItemStack halo = slot.getStack(player);
       if (!(halo.getItem() instanceof ItemRequestingHalo)) return;
+      if (!ItemRequestingHalo.canPlayerAccessNetwork(player, halo)) return;
       GlobalPos pos = ItemRequestingHalo.getBoundSenderPosition(halo);
       if (pos == null) return;
       Level world = player.server.getLevel(pos.dimension());

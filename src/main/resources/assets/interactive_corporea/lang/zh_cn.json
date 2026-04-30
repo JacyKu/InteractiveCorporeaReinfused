@@ -15,7 +15,13 @@
   "interactive_corporea.halo_module.receive": "量子接收器",
   "interactive_corporea.halo_module.search": "搜索",
   "interactive_corporea.halo_module.update": "自动更新",
+  "interactive_corporea.halo_module.magnate": "磁力戒指",
+  "interactive_corporea.halo_module.crafting": "合成",
   "interactive_corporea.halo_module.quantum_inserter": "量子插入器",
+  "interactive_corporea.halo_module.far_reach": "远程采集戒指",
+  "interactive_corporea.halo_module.greater_magnate": "强效磁力戒指",
+  "interactive_corporea.halo_module.black_hole": "黑洞护符",
+  "interactive_corporea.halo_module.range": "范围模块: +%s",
 
   "key.interactive_corporea.category": "交互式多媒体",
   "key.interactive_corporea.requesting_halo": "打开/关闭 多媒体请求环",
@@ -53,6 +59,7 @@
   "interactive_corporea.subtitle.halo.select": "环形界面:选择",
   "interactive_corporea.subtitle.halo.request": "环形界面:请求",
   "interactive_corporea.subtitle.halo.reach_edge": "环形界面:到达边缘",
+  "interactive_corporea.subtitle.halo.out_of_range": "环形界面:超出范围",
   "interactive_corporea.subtitle.quantum.send": "量子化发送",
   "interactive_corporea.subtitle.quantum.receive": "量子化接受"
 }

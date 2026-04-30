@@ -5,6 +5,7 @@
   "halo.select": { "sounds": ["interactive_corporea:select"], "subtitle": "interactive_corporea.subtitle.halo.select" },
   "halo.request": { "sounds": ["interactive_corporea:request"], "subtitle": "interactive_corporea.subtitle.halo.request" },
   "halo.reach_edge": { "sounds": ["interactive_corporea:reach_edge"], "subtitle": "interactive_corporea.subtitle.halo.reach_edge" },
+  "halo.out_of_range": { "sounds": ["interactive_corporea:out_of_range"], "subtitle": "interactive_corporea.subtitle.halo.out_of_range" },
   "quantum.send": { "sounds": ["interactive_corporea:quantum_send"], "subtitle": "interactive_corporea.subtitle.quantum.send" },
   "quantum.receive": { "sounds": ["interactive_corporea:quantum_receive"], "subtitle": "interactive_corporea.subtitle.quantum.receive" }
 }

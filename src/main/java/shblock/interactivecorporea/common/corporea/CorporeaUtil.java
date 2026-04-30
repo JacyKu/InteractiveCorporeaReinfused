@@ -108,6 +108,68 @@ public class CorporeaUtil {
     return collectNodesByProximity(resolvedSpark);
   }
 
+  public static boolean isEntityInRangeOfNetwork(Entity entity, GlobalPos networkPos, double range) {
+    if (entity == null || networkPos == null || !entity.level().dimension().equals(networkPos.dimension())) {
+      return false;
+    }
+
+    CorporeaSpark spark = CorporeaHelper.instance().getSparkForBlock(entity.level(), networkPos.pos());
+    return spark != null && isEntityInRangeOfNetwork(entity, spark, range);
+  }
+
+  public static boolean isEntityInRangeOfNetwork(Entity entity, CorporeaSpark spark, double range) {
+    if (entity == null || spark == null || entity.level() != spark.entity().level()) {
+      return false;
+    }
+
+    double rangeSqr = range * range;
+    CorporeaSpark resolvedSpark = resolveRequestSpark(spark);
+    if (spark.entity().distanceToSqr(entity) <= rangeSqr || resolvedSpark.entity().distanceToSqr(entity) <= rangeSqr) {
+      return true;
+    }
+
+    for (CorporeaSpark networkSpark : collectSparksByProximity(resolvedSpark)) {
+      if (networkSpark.entity().distanceToSqr(entity) <= rangeSqr) {
+        return true;
+      }
+    }
+
+    for (CorporeaNode node : getNodesOnNetworkCompat(resolvedSpark)) {
+      if (node.getWorld() == entity.level() && isEntityInRangeOfNode(entity, node, rangeSqr)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean isEntityInRangeOfNode(Entity entity, CorporeaNode node, double rangeSqr) {
+    BlockPos pos = node.getPos();
+    return entity.distanceToSqr(pos.getX() + .5D, pos.getY() + .5D, pos.getZ() + .5D) <= rangeSqr;
+  }
+
+  private static Set<CorporeaSpark> collectSparksByProximity(CorporeaSpark rootSpark) {
+    Set<CorporeaSpark> visited = new LinkedHashSet<>();
+    Deque<CorporeaSpark> pending = new ArrayDeque<>();
+    pending.add(rootSpark);
+    visited.add(rootSpark);
+
+    while (!pending.isEmpty()) {
+      CorporeaSpark spark = pending.removeFirst();
+
+      AABB searchBox = spark.entity().getBoundingBox().inflate(SPARK_SCAN_RANGE);
+      for (Entity entity : spark.entity().level().getEntitiesOfClass(Entity.class, searchBox, other -> other instanceof CorporeaSpark)) {
+        CorporeaSpark otherSpark = (CorporeaSpark) entity;
+        if (!otherSpark.entity().isAlive() || visited.contains(otherSpark) || otherSpark.getNetwork() != rootSpark.getNetwork()) {
+          continue;
+        }
+
+        visited.add(otherSpark);
+        pending.addLast(otherSpark);
+      }
+    }
+    return visited;
+  }
+
   private static Set<CorporeaNode> collectNodesByProximity(CorporeaSpark rootSpark) {
     Set<CorporeaNode> nodes = new LinkedHashSet<>();
     Set<CorporeaSpark> visited = new LinkedHashSet<>();

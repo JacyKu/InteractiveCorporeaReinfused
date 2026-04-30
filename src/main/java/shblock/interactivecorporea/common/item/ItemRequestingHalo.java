@@ -27,6 +27,7 @@ import shblock.interactivecorporea.client.renderer.item.ISTERRequestingHalo;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
 import shblock.interactivecorporea.client.util.KeyboardHelper;
 import shblock.interactivecorporea.common.block.BlockItemQuantizationDevice;
+import shblock.interactivecorporea.common.corporea.CorporeaUtil;
 import shblock.interactivecorporea.common.util.NBTTagHelper;
 import shblock.interactivecorporea.common.util.StackHelper;
 import vazkii.botania.common.block.BotaniaBlocks;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class ItemRequestingHalo extends Item {
+  private static final int BASE_NETWORK_RANGE = 10;
   private static final String PREFIX_INDEX_POS = "bound_position";
   private static final String PREFIX_SENDER_POS = "sender_position";
   private static final String PREFIX_MODULES = "modules";
@@ -119,10 +121,16 @@ public class ItemRequestingHalo extends Item {
    * @return if the installation was successful
    */
   public static boolean installModule(ItemStack stack, HaloModule module) {
+    if (!canInstallModule(stack, module)) return false;
     int mask = ItemNBTHelper.getInt(stack, PREFIX_MODULES, 0);
-    if (module.containsThis(mask)) return false;
     ItemNBTHelper.setInt(stack, PREFIX_MODULES, mask | module.bitMask);
     return true;
+  }
+
+  public static boolean canInstallModule(ItemStack stack, HaloModule module) {
+    int mask = ItemNBTHelper.getInt(stack, PREFIX_MODULES, 0);
+    if (module.containsThis(mask)) return false;
+    return !module.isRangeModule() || getInstalledRangeModule(stack) == null;
   }
 
   public static boolean uninstallModule(ItemStack stack, HaloModule module) {
@@ -147,6 +155,35 @@ public class ItemRequestingHalo extends Item {
       }
     }
     return false;
+  }
+
+  public static int getNetworkRange(ItemStack stack) {
+    return BASE_NETWORK_RANGE + getRangeBonus(stack);
+  }
+
+  public static int getRangeBonus(ItemStack stack) {
+    int bonus = 0;
+    for (HaloModule module : HaloModule.values()) {
+      if (module.isRangeModule() && isModuleInstalled(stack, module)) {
+        bonus += module.rangeBonus;
+      }
+    }
+    return bonus;
+  }
+
+  @Nullable
+  public static HaloModule getInstalledRangeModule(ItemStack stack) {
+    for (HaloModule module : HaloModule.values()) {
+      if (module.isRangeModule() && isModuleInstalled(stack, module)) {
+        return module;
+      }
+    }
+    return null;
+  }
+
+  public static boolean canPlayerAccessNetwork(Player player, ItemStack stack) {
+    GlobalPos pos = getBoundIndexPosition(stack);
+    return pos != null && CorporeaUtil.isEntityInRangeOfNetwork(player, pos, getNetworkRange(stack));
   }
 
   public static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo) {
@@ -228,11 +265,18 @@ public class ItemRequestingHalo extends Item {
         StringBuilder builder = new StringBuilder(I18n.get(IC.MODID + ".requesting_halo.tooltip.modules_prefix"));
         builder.append("§r| ");
         for (HaloModule module : HaloModule.values()) {
+          if (module.isRangeModule()) {
+            continue;
+          }
           boolean installed = isModuleInstalled(stack, module);
           builder.append(installed ? "§6" : "§8");
           builder.append(I18n.get(module.translationKey));
           builder.append("§r | ");
         }
+        int rangeBonus = getRangeBonus(stack);
+        builder.append(rangeBonus > 0 ? "§6" : "§8");
+        builder.append(I18n.get(IC.MODID + ".halo_module.range", rangeBonus));
+        builder.append("§r | ");
         tooltip.add(Component.literal(builder.toString()));
       } else {
         tooltip.add(Component.literal(

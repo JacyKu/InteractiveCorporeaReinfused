@@ -51,6 +51,11 @@ public class CPacketRequestingHaloState {
         RequestingHaloServerState.close(player);
         return;
       }
+      if (!ItemRequestingHalo.canPlayerAccessNetwork(player, halo)) {
+        RequestingHaloServerState.close(player);
+        CPacketRequestItemListUpdate.broadcastRemoteClose(player);
+        return;
+      }
       RequestingHaloServerState.open(player, slot);
       CPacketRequestItemListUpdate.broadcastRemoteState(player, halo, rotationOffset);
     });

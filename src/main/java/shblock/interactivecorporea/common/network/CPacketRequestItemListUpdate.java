@@ -49,6 +49,9 @@ public class CPacketRequestItemListUpdate {
       if (!(stack.getItem() instanceof ItemRequestingHalo)) {
         return;
       }
+      if (!ItemRequestingHalo.canPlayerAccessNetwork(player, stack)) {
+        return;
+      }
       GlobalPos pos = ItemRequestingHalo.getBoundIndexPosition(stack);
       if (pos == null) {
         return;
@@ -120,6 +123,10 @@ public class CPacketRequestItemListUpdate {
   }
 
   private static List<ItemStack> queryForHalo(ServerPlayer player, ItemStack stack) {
+    if (!ItemRequestingHalo.canPlayerAccessNetwork(player, stack)) {
+      return List.of();
+    }
+
     GlobalPos pos = ItemRequestingHalo.getBoundIndexPosition(stack);
     if (pos == null) {
       return List.of();
