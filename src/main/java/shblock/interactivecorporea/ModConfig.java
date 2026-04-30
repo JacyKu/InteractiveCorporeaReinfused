@@ -37,19 +37,19 @@ public final class ModConfig {
       builder.push("Mana");
       requestingHaloStaticConsumption = builder
           .comment("Mana consumption per tick while the halo interface is open")
-          .defineInRange("requestingHaloStaticConsumption", 1, 0, 100);
+          .defineInRange("requestingHaloStaticConsumption", 1, 0, Integer.MAX_VALUE);
       requestingHaloUpdateConsumption = builder
           .comment("Mana consumption when the displayed item list is updated")
-          .defineInRange("requestingHaloUpdateConsumption", 10, 0, 100);
+          .defineInRange("requestingHaloUpdateConsumption", 10, 0, Integer.MAX_VALUE);
       quantizationExtractConsumption = builder
           .comment("Mana consumption PER ITEM to extract items from the network")
-          .defineInRange("quantizationExtractConsumption", 20, 0, 100);
+          .defineInRange("quantizationExtractConsumption", 20, 0, Integer.MAX_VALUE);
       quantizationInsertConsumption = builder
           .comment("Mana consumption PER ITEM to insert items into the network")
-          .defineInRange("quantizationInsertConsumption", 40, 0, 100);
+          .defineInRange("quantizationInsertConsumption", 40, 0, Integer.MAX_VALUE);
       quantizationDeviceManaCapacity = builder
           .comment("The mana capacity of the Quantization Device (recommended to be larger than the per-item quantization costs * 256)")
-          .defineInRange("quantizationDeviceManaCapacity", 20000, 1, Integer.MAX_VALUE);
+          .defineInRange("quantizationDeviceManaCapacity", 100000, 1, Integer.MAX_VALUE);
       builder.pop();
 
       builder.push("Animations");
