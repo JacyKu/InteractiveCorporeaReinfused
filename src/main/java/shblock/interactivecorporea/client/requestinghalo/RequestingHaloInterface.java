@@ -78,7 +78,7 @@ public class RequestingHaloInterface {
 
   private int tick = 0;
 
-  private static final double INITIAL_ROTATION = 36;
+  private static final double INITIAL_ROTATION = 0;
   private double rotationOffset;
   private double relativeRotation = INITIAL_ROTATION;
   private double lastRelativeRotation = INITIAL_ROTATION;
@@ -194,7 +194,8 @@ public class RequestingHaloInterface {
     itemSpacing = (1D / itemList.getHeight()) * 2D * height;
     itemRotSpacing = MathUtil.calcRadiansFromChord(radius, itemSpacing);
     itemZOffset = MathUtil.calcChordCenterDistance(radius, itemSpacing);
-    Vec2d lookingPos = calcLookingPos(radius, itemSpacing, itemRotSpacing);
+    double colOffset = itemList.getColumnOffset();
+    Vec2d lookingPos = calcLookingPos(radius, itemSpacing, itemRotSpacing, colOffset);
     boolean haveSelectedItem = false;
     for (AnimatedItemStack aniStack : itemList.getAnimatedList()) {
       if (updateSelectionBox(aniStack, lookingPos)) {
@@ -202,7 +203,7 @@ public class RequestingHaloInterface {
       }
 
       Vec2d pos = aniStack.getPos();
-      float rot = (float) (pos.x * itemRotSpacing);
+      float rot = (float) ((pos.x - colOffset) * itemRotSpacing);
       double degreeDiff = Math.abs(relativeRotation - Math.toDegrees(rot));
       if (degreeDiff >= widthDegrees) {
         continue;
@@ -251,7 +252,7 @@ public class RequestingHaloInterface {
     ms.push();
     ms.rotate(new Quaternion(Vector3f.YP, (float) -rotationOffset, true));
     Vec2d selPos = selectionBox.getPos();
-    ms.rotate(Vector3f.YP.rotation((float) (-selPos.x * itemRotSpacing)));
+    ms.rotate(Vector3f.YP.rotation((float) (-(selPos.x - colOffset) * itemRotSpacing)));
     ms.translate(0F, -(selPos.y - (itemList.getHeight() - 1) / 2F) * itemSpacing, itemZOffset);
     float s = (float) scale;
     ms.scale(s, s, s);
@@ -423,7 +424,8 @@ public class RequestingHaloInterface {
 
     boolean limited = false;
 
-    double start = (-degreeItemRotSpacing / 2 - excessSpacing);
+    double halfListWidth = Math.toDegrees(getItemListDisplayWidth()) / 2.0;
+    double start = -(halfListWidth + degreeItemRotSpacing / 2 + excessSpacing);
     double distToStart = relativeRotation - start;
     if (distToStart < 0) {
       mc.player.setYRot((float) (mc.player.getYRot() - (distToStart * correctionSpd - minSpd) * RenderTick.delta));
@@ -431,7 +433,7 @@ public class RequestingHaloInterface {
       limited = true;
     }
 
-    double end = (Math.toDegrees(getItemListDisplayWidth()) + degreeItemRotSpacing / 2 + excessSpacing);
+    double end = halfListWidth + degreeItemRotSpacing / 2 + excessSpacing;
     double distToEnd = relativeRotation - end;
     if (distToEnd > 0) {
       mc.player.setYRot((float) (mc.player.getYRot() - (distToEnd * correctionSpd + minSpd) * RenderTick.delta));
@@ -516,9 +518,9 @@ public class RequestingHaloInterface {
    * @param radius the radius of the halo ring (the distance from player's position to the halo surface)
    * @param rotSpacing the radians between two items
    */
-  private Vec2d calcLookingPos(double radius, double spacing, double rotSpacing) {
+  private Vec2d calcLookingPos(double radius, double spacing, double rotSpacing, double colOffset) {
     return new Vec2d(
-        (Math.toRadians(relativeRotation) / rotSpacing),
+        (Math.toRadians(relativeRotation) / rotSpacing) + colOffset,
         (Math.tan(Math.toRadians(mc.player.getXRot())) * radius / spacing) + (itemList.getHeight() - 1) / 2F
     );
   }

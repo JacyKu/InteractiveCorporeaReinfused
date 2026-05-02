@@ -149,6 +149,8 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 		itemRotSpacing = MathUtil.calcRadiansFromChord(radius, itemSpacing);
 		itemZOffset = MathUtil.calcChordCenterDistance(radius, itemSpacing);
 
+		double colOffset = itemList.getColumnOffset();
+
 		MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
 		boolean haveSelectedItem = false;
 		for (AnimatedItemStack animatedStack : itemList.getAnimatedList()) {
@@ -157,7 +159,7 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 			}
 
 			Vec2d pos = animatedStack.getPos();
-			float rot = (float) (pos.x * itemRotSpacing);
+			float rot = (float) ((pos.x - colOffset) * itemRotSpacing);
 			double degreeDiff = Math.abs(relativeRotation - Math.toDegrees(rot));
 			if (degreeDiff >= widthDegrees) {
 				continue;
@@ -206,7 +208,7 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 		poseStack.push();
 		poseStack.rotate(new Quaternion(Vector3f.YP, (float) -rotationOffset, true));
 		Vec2d selectionBoxPos = selectionBox.getPos();
-		poseStack.rotate(Vector3f.YP.rotation((float) (-selectionBoxPos.x * itemRotSpacing)));
+		poseStack.rotate(Vector3f.YP.rotation((float) (-(selectionBoxPos.x - colOffset) * itemRotSpacing)));
 		poseStack.translate(0F, -(selectionBoxPos.y - (itemList.getHeight() - 1) / 2F) * itemSpacing, itemZOffset);
 		float selectionScale = (float) scale;
 		poseStack.scale(selectionScale, selectionScale, selectionScale);

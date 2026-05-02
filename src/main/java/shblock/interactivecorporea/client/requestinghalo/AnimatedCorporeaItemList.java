@@ -22,6 +22,7 @@ public class AnimatedCorporeaItemList {
   private final Map<Integer, AnimatedItemStack> requestIdMap = new HashMap<>();
 
   private boolean isFirstUpdate = true;
+  private int numColumns = 1;
 
   public AnimatedCorporeaItemList(int height) {
     this.height = height;
@@ -82,8 +83,10 @@ public class AnimatedCorporeaItemList {
   private void layoutInCurrentOrder() {
     int y = 0;
     int x = 0;
+    int maxX = 0;
     for (AnimatedItemStack stack : animatedList) {
       if (stack.isRemoved()) continue;
+      maxX = x;
       if (!stack.isNew()) {
         stack.moveTo(x, y);
       } else {
@@ -95,6 +98,11 @@ public class AnimatedCorporeaItemList {
         x++;
       }
     }
+    numColumns = maxX + 1;
+  }
+
+  public double getColumnOffset() {
+    return (numColumns - 1) / 2.0;
   }
 
   public void sortByAmount() {
