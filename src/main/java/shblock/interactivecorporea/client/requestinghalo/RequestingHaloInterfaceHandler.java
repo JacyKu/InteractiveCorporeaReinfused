@@ -14,21 +14,31 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.*;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.client.settings.KeyConflictContext;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.ModSounds;
+import shblock.interactivecorporea.client.renderer.tile.QuantizationDeviceWandHUD;
 import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
 import shblock.interactivecorporea.common.network.CPacketRequestingHaloState;
 import shblock.interactivecorporea.common.network.CPacketRequestingHaloViewUpdate;
 import shblock.interactivecorporea.common.network.ModPacketHandler;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
+import shblock.interactivecorporea.common.tile.ModTiles;
+import shblock.interactivecorporea.common.tile.TileItemQuantizationDevice;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.CurioSlotPointer;
 import shblock.interactivecorporea.common.util.ToolItemHelper;
 import shblock.interactivecorporea.common.util.Vec2d;
 
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.minecraftforge.common.util.LazyOptional;
+import vazkii.botania.api.BotaniaForgeClientCapabilities;
+import vazkii.botania.api.block.WandHUD;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -375,5 +385,25 @@ public class RequestingHaloInterfaceHandler {
     }
 
     return ItemStack.EMPTY;
+  }
+
+  @SubscribeEvent
+  public static void onAttachBlockEntityCapabilities(AttachCapabilitiesEvent<BlockEntity> event) {
+    BlockEntity be = event.getObject();
+    if (!(be instanceof TileItemQuantizationDevice tile)) return;
+    WandHUD hud = new QuantizationDeviceWandHUD(tile);
+    LazyOptional<WandHUD> lazy = LazyOptional.of(() -> hud);
+    event.addCapability(
+        new ResourceLocation(IC.MODID, "quantization_device_wand_hud"),
+        new ICapabilityProvider() {
+          @Override
+          public <T> net.minecraftforge.common.util.LazyOptional<T> getCapability(
+              net.minecraftforge.common.capabilities.Capability<T> cap,
+              @javax.annotation.Nullable net.minecraft.core.Direction side) {
+            return BotaniaForgeClientCapabilities.WAND_HUD.orEmpty(cap, lazy);
+          }
+        }
+    );
+    event.addListener(lazy::invalidate);
   }
 }
