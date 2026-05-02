@@ -5,22 +5,40 @@ The goal of the mod is to make the Corporea system in Botania easier to use and 
 
 I've ported the mod to Forge 1.20.1-47.4.10
 
-### Changes from the original mod
-- Removed Sorting as a module, it sorts by item count on default now. You can update sorting by pressing the sort keybind
-
 ### Known issues
 - The rainbow glow used in the Requesting Halo and in the Quantization Device does not display the rays correctly.
 
 ### Todo
-- Update example image in Lexica
 - Add support for crafting in the Halo. (maybe)
-- Add a new shaders/looks for the Halo background panel.
-- Add range upgrades (be within 10 blocks of a Corporea network, any link of it. Add upgrades: Ring of Magnetization (+10), Ring of Far Reach(+20), Ring of Greater Magnetization(+30), Black Hole Talisman(+50))
-    - play request_old when attempting to open out of range
-- Add CTRL+backspace support for search
 - Add toggle to move Halo with player view angle
-- Fix all remaining import/deprecation errors and warnings.
-
 
 ### In-game screenshot
 ![image](https://media.forgecdn.net/attachments/description/null/description_b85727f0-8be8-4cc6-9c9e-18062ee54bbf.png)
+
+### Halo Background Styles
+
+Craft a **Requesting Halo** with a Botania **Mystical Flower** to change its background shader. Each flower color unlocks a different style:
+
+| Mystical Flower | Style Name | Description |
+|---|---|---|
+| White | Clouds | Layered noise clouds |
+| Blue | Space | Volumetric star field |
+| Yellow | Falling Stars | 3D fractal fly-through |
+| Red | Aurora | Aurora borealis |
+| Gray | Depth Map | Perlin contour rings |
+| Light Blue | Foggy Clouds | FBM domain-warped fog |
+| Cyan | Glass Liquid | Flowing glass-liquid warp |
+| Light Gray | Metal Clouds | Metallic sine-warp bands |
+| Purple | Smokish | Aurora smoke with particles |
+| Green | Split | Fine rippling split bands |
+| Pink | Wavy Fog | Gently rolling fog waves |
+| Orange | Wavy Pattern | Sine interference pattern |
+
+The legacy **petal**-based styles (Botania petals instead of flowers) are still available:
+
+| Petal | Style |
+|---|---|
+| Light Blue petal | Classic |
+| Cyan petal | Mana |
+| Purple petal | Corporea |
+| Lime petal | Botania |
