@@ -40,7 +40,7 @@ public class ISTERRequestingHalo extends BlockEntityWithoutLevelRenderer {
         ms.translate(.15, 0, 0);
         break;
       case GROUND:
-        float sg = .1F;
+        float sg = 1F;
         ms.scale(sg, sg, sg);
         break;
       default:
