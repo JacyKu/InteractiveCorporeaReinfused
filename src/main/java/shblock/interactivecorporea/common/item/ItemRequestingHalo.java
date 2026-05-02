@@ -44,6 +44,8 @@ public class ItemRequestingHalo extends Item {
   private static final String PREFIX_SENDER_POS = "sender_position";
   private static final String PREFIX_MODULES = "modules";
   private static final String PREFIX_CRAFTING_SLOT_ITEMS = "crafting_slot_items";
+  private static final String PREFIX_INTERFACE_STYLE = "interface_style";
+  private static final String PREFIX_HALO_TINT = "halo_tint"; // packed 0xRRGGBB, default 0xFFFFFF
 
   public ItemRequestingHalo() {
     super(new Properties().stacksTo(1));
@@ -186,6 +188,40 @@ public class ItemRequestingHalo extends Item {
     return pos != null && CorporeaUtil.isEntityInRangeOfNetwork(player, pos, getNetworkRange(stack));
   }
 
+  public static HaloInterfaceStyle getInterfaceStyle(ItemStack stack) {
+    return HaloInterfaceStyle.fromSerializedName(ItemNBTHelper.getString(stack, PREFIX_INTERFACE_STYLE, HaloInterfaceStyle.CLASSIC.getSerializedName()));
+  }
+
+  public static void setInterfaceStyle(ItemStack stack, HaloInterfaceStyle style) {
+    ItemNBTHelper.setString(stack, PREFIX_INTERFACE_STYLE, style.getSerializedName());
+  }
+
+  public static int getHaloTintPacked(ItemStack stack) {
+    return ItemNBTHelper.getInt(stack, PREFIX_HALO_TINT, 0xFFFFFF);
+  }
+
+  public static float[] getHaloTintColor(ItemStack stack) {
+    return unpackTint(getHaloTintPacked(stack));
+  }
+
+  public static float[] unpackTint(int packed) {
+    return new float[] {
+        ((packed >> 16) & 0xFF) / 255.0f,
+        ((packed >>  8) & 0xFF) / 255.0f,
+        ( packed        & 0xFF) / 255.0f
+    };
+  }
+
+  public static void setHaloTintFromDye(ItemStack stack, net.minecraft.world.item.DyeColor dye) {
+    float[] raw = dye.getTextureDiffuseColors();
+    float max = Math.max(raw[0], Math.max(raw[1], raw[2]));
+    float scale = (max < 0.55f && max > 0f) ? 0.55f / max : 1.0f;
+    int r = Math.min(255, (int)(raw[0] * scale * 255));
+    int g = Math.min(255, (int)(raw[1] * scale * 255));
+    int b = Math.min(255, (int)(raw[2] * scale * 255));
+    ItemNBTHelper.setInt(stack, PREFIX_HALO_TINT, (r << 16) | (g << 8) | b);
+  }
+
   public static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo) {
     boolean didChange = false;
     ListTag nbt = ItemNBTHelper.getList(halo, PREFIX_CRAFTING_SLOT_ITEMS, Tag.TAG_COMPOUND, true);
@@ -260,6 +296,9 @@ public class ItemRequestingHalo extends Item {
 
       temp = senderPos == null ? I18n.get(IC.MODID + ".requesting_halo.tooltip.null") : "\n    " + globalPosToString(senderPos);
       tooltip.add(Component.literal(I18n.get(IC.MODID + ".requesting_halo.tooltip.sender_pos") + temp));
+
+      HaloInterfaceStyle style = getInterfaceStyle(stack);
+      tooltip.add(Component.literal(I18n.get(IC.MODID + ".requesting_halo.tooltip.style", I18n.get(style.translationKey))));
 
       if (ItemRequestingHalo.isAnyModuleInstalled(stack)) {
         StringBuilder builder = new StringBuilder(I18n.get(IC.MODID + ".requesting_halo.tooltip.modules_prefix"));

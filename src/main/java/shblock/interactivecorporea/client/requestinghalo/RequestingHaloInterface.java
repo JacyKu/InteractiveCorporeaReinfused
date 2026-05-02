@@ -26,12 +26,12 @@ import net.minecraftforge.client.settings.KeyConflictContext;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.ModSounds;
-import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.requestinghalo.crafting.CraftingInterfaceSlot;
 import shblock.interactivecorporea.client.requestinghalo.crafting.HaloCraftingInterface;
 import shblock.interactivecorporea.client.util.KeyboardHelper;
 import shblock.interactivecorporea.client.util.RenderTick;
 import shblock.interactivecorporea.common.util.MathUtil;
+import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
 import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.network.CPacketInsertDroppedItem;
@@ -74,6 +74,7 @@ public class RequestingHaloInterface {
   private boolean closing = false;
   private double openCloseProgress = 0F;
   private boolean isNormalClose = false;
+  private final Random magicParticleRandom = new Random();
 
   private int tick = 0;
 
@@ -178,16 +179,10 @@ public class RequestingHaloInterface {
     double progress = Math.sin((Math.PI / 2F) * openCloseProgress);
     double fadeWidth = .3;
     double width = progress * (Math.PI * 0.25F);
-    RenderUtil.renderPartialHalo(
-        ms,
-        radius,
-        width - fadeWidth,
-        height * progress + .05,
-        fadeWidth,
-        0F, .7F, 1F,
-        (float) (progress * .6F)
-    );
+    HaloInterfaceStyle interfaceStyle = ItemRequestingHalo.getInterfaceStyle(haloItem);
+    HaloInterfaceBackground.render(ms, radius, height, progress, interfaceStyle, ItemRequestingHalo.getHaloTintColor(haloItem), rotationOffset + relativeRotation);
     ms.pop();
+    spawnTransitionParticlesOnHalo(interfaceStyle, progress);
 
     double fadeDegrees = Math.toDegrees(fadeWidth);
     double widthDegrees = Math.toDegrees(width);
@@ -453,18 +448,68 @@ public class RequestingHaloInterface {
 
   private float particleSpawnTimer = 0F;
   private void spawnParticleLineOnHalo(double relativeRot) {
-    Vector3d mid = new Vector3d(radius * .95, 0, 0);
+    if (mc.level == null || mc.player == null) return;
+
+    Vector3d mid = new Vector3d(radius + .12D, 0, 0);
     mid = mid.rotateYaw((float) Math.toRadians(-rotationOffset - 90 - relativeRot));
     mid = mid.add(mc.player.getEyePosition((float) RenderTick.pt));
     particleSpawnTimer += RenderTick.delta;
-    Random random = new Random();
+    HaloInterfaceStyle style = ItemRequestingHalo.getInterfaceStyle(haloItem);
+    float[] tint = ItemRequestingHalo.getHaloTintColor(haloItem);
     int cnt = 0;
     for (int i = 0; i < (int) (particleSpawnTimer / .1); i++) {
-      Vector3d pos = mid.add(0, (random.nextDouble() * 2 - 1) * height, 0);
-      mc.level.addParticle(new DustParticleOptions(new org.joml.Vector3f(1F, 0F, 0F), 1F), pos.x, pos.y, pos.z, 0, 0, 0);
+      Vector3d pos = mid.add(0, (magicParticleRandom.nextDouble() * 2 - 1) * height, 0);
+      float[] color = HaloStylePalette.tint(HaloStylePalette.particle(style, RenderTick.total * .01D + magicParticleRandom.nextDouble()), tint, .82F, .08F);
+      float size = style == HaloInterfaceStyle.CLASSIC ? .75F : 1F + magicParticleRandom.nextFloat() * .35F;
+      mc.level.addParticle(new DustParticleOptions(new org.joml.Vector3f(color[0], color[1], color[2]), size), pos.x, pos.y, pos.z, 0, .004D + magicParticleRandom.nextDouble() * .004D, 0);
       cnt++;
     }
     particleSpawnTimer -= cnt * .1;
+  }
+
+  private float transitionParticleSpawnTimer = 0F;
+  private void spawnTransitionParticlesOnHalo(HaloInterfaceStyle style, double progress) {
+    if ((!opening && !closing) || progress < .04D || mc.level == null || mc.player == null) {
+      transitionParticleSpawnTimer = 0F;
+      return;
+    }
+
+    float interval = style == HaloInterfaceStyle.BOTANIA ? .035F : .045F;
+    transitionParticleSpawnTimer += RenderTick.delta;
+    int spawnCount = Math.min((int) (transitionParticleSpawnTimer / interval), style == HaloInterfaceStyle.BOTANIA ? 5 : 4);
+    if (spawnCount <= 0) {
+      return;
+    }
+
+    Vector3d eyePos = new Vector3d(mc.player.getEyePosition((float) RenderTick.pt));
+  float[] tint = ItemRequestingHalo.getHaloTintColor(haloItem);
+    double panelWidth = progress * (Math.PI * .25D);
+    boolean openingNow = opening && !closing;
+    for (int index = 0; index < spawnCount; index++) {
+      double relativeAngle = (magicParticleRandom.nextDouble() * 2D - 1D) * panelWidth * .88D;
+      double vertical = (magicParticleRandom.nextDouble() * 2D - 1D) * height * (.62D + progress * .25D);
+      double particleRadius = radius + (openingNow ? -.32D - magicParticleRandom.nextDouble() * .22D : .18D + magicParticleRandom.nextDouble() * .2D);
+      Vector3d pos = new Vector3d(particleRadius, vertical, 0D)
+          .rotateYaw((float) Math.toRadians(-rotationOffset - 90D - relativeRotation + Math.toDegrees(relativeAngle)))
+          .add(eyePos);
+        float[] color = HaloStylePalette.tint(HaloStylePalette.particle(style, RenderTick.total * .012D + magicParticleRandom.nextDouble()), tint, .86F, .1F);
+      float size = .68F + magicParticleRandom.nextFloat() * (style == HaloInterfaceStyle.BOTANIA ? .62F : .44F);
+      double outwardX = pos.x - eyePos.x;
+      double outwardZ = pos.z - eyePos.z;
+      double outwardLength = Math.sqrt(outwardX * outwardX + outwardZ * outwardZ);
+      if (outwardLength > 1.0E-4D) {
+        outwardX /= outwardLength;
+        outwardZ /= outwardLength;
+      }
+      double direction = openingNow ? 1D : -1D;
+      double swirl = (magicParticleRandom.nextDouble() * 2D - 1D) * .012D;
+      double radialSpeed = (.018D + magicParticleRandom.nextDouble() * .018D) * direction;
+      double speedX = outwardX * radialSpeed - outwardZ * swirl;
+      double speedZ = outwardZ * radialSpeed + outwardX * swirl;
+      double speedY = (magicParticleRandom.nextDouble() * 2D - 1D) * .006D + (openingNow ? .004D : -.002D);
+      mc.level.addParticle(new DustParticleOptions(new org.joml.Vector3f(color[0], color[1], color[2]), size), pos.x, pos.y, pos.z, speedX, speedY, speedZ);
+    }
+    transitionParticleSpawnTimer -= spawnCount * interval;
   }
 
   /**

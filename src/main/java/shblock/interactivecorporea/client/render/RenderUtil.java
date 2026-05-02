@@ -18,7 +18,6 @@ import net.minecraft.util.math.vector.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import shblock.interactivecorporea.client.util.RenderTick;
@@ -35,6 +34,42 @@ public class RenderUtil {
   private static final float TEXT_FOREGROUND_Z_OFFSET = -.5F;
 
   private static final Minecraft mc = Minecraft.getInstance();
+
+  /**
+   * Renders the halo arc using a custom shader RenderType (POSITION_COLOR_TEX).
+    * UV.x = world azimuth / (2 * PI), UV.y = 0 (bottom) or 1 (top).
+    * This makes the shader sample stay pinned to world directions like a skybox.
+   */
+  public static void renderPartialHaloShader(MatrixStack ms, RenderType type,
+      double radius, double width, double height, double fadeWidth,
+      double worldRotRad,
+      float r, float g, float b, float alpha) {
+    double fullWidth = width + fadeWidth;
+    if (fullWidth <= 0D) return;
+
+    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+    VertexConsumer buffer = buffers.getBuffer(type);
+    Matrix4f matrix = ms.getLast().getMatrix();
+
+    for (double angle = -fullWidth; angle < fullWidth; angle += Math.PI / 360D) {
+      float xp = (float) (Math.sin(angle) * radius);
+      float zp = (float) (Math.cos(angle) * radius);
+
+      double minDistToEdge = Math.min(Math.abs(fullWidth - angle), Math.abs(-fullWidth - angle));
+      float a = alpha;
+      if (minDistToEdge < fadeWidth) {
+        a *= (float) Math.sin((minDistToEdge / fadeWidth) * (Math.PI / 2));
+      }
+
+      // World-space U: world_azimuth = angle - worldRotRad (from R_y(-worldRotRad) matrix).
+      // Dividing by 2 * PI normalises to 0..1 over the full circle. Since u = world_azimuth / (2 * PI),
+      // the worldRotRad cancels for any fixed world direction, giving a static skybox UV.
+      float u = (float) ((angle - worldRotRad) / (2.0 * Math.PI));
+      buffer.vertex(matrix, xp, (float) (-height), zp).color(r, g, b, a).uv(u, 0f).endVertex();
+      buffer.vertex(matrix, xp, (float) ( height), zp).color(r, g, b, a).uv(u, 1f).endVertex();
+    }
+    buffers.endBatch(type);
+  }
 
   public static void renderPartialHalo(MatrixStack ms, double radius, double width, double height, double fadeWidth, float r, float g, float b, float alpha) {
     MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
@@ -59,6 +94,44 @@ public class RenderUtil {
       buffer.vertex(matrix, xp, (float) (height), zp).color(r, g, b, currentAlpha).endVertex();
     }
     buffers.endBatch();
+  }
+
+  public static void renderWavyPartialHalo(MatrixStack ms, double radius, double width, double height, double fadeWidth, double waveHeight, double waveFrequency, double waveSpeed, double waveOffset, float r, float g, float b, float alpha) {
+    double fullWidth = width + fadeWidth;
+    if (fullWidth <= 0D) return;
+
+    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+    VertexConsumer buffer = buffers.getBuffer(ModRenderTypes.halo);
+
+    Matrix4f matrix = ms.getLast().getMatrix();
+    for (double angle = -fullWidth; angle < fullWidth; angle += Math.PI / 360F) {
+      double progress = (angle + fullWidth) / (fullWidth * 2D);
+      double topWave = wave(progress, waveFrequency, waveSpeed, waveOffset);
+      double bottomWave = wave(progress, waveFrequency * .8D + .7D, -waveSpeed * .85D, waveOffset + Math.PI * .8D);
+      float xp = (float) (Math.sin(angle) * radius);
+      float zp = (float) (Math.cos(angle) * radius);
+
+      double minDistToEdge = Math.min(
+          Math.abs(fullWidth - angle),
+          Math.abs(-fullWidth - angle)
+      );
+      float currentAlpha = alpha;
+      if (minDistToEdge < fadeWidth) {
+        currentAlpha *= Math.sin((minDistToEdge / fadeWidth) * (Math.PI / 2));
+      }
+
+      float bottomHeight = (float) Math.max(.02D, height + bottomWave * waveHeight);
+      float topHeight = (float) Math.max(.02D, height + topWave * waveHeight);
+      buffer.vertex(matrix, xp, -bottomHeight, zp).color(r, g, b, currentAlpha).endVertex();
+      buffer.vertex(matrix, xp, topHeight, zp).color(r, g, b, currentAlpha).endVertex();
+    }
+    buffers.endBatch();
+  }
+
+  private static double wave(double progress, double frequency, double speed, double offset) {
+    double time = RenderTick.total * speed + offset;
+    return Math.sin(progress * Math.PI * 2D * frequency + time) * .65D
+        + Math.sin(progress * Math.PI * 2D * (frequency * .5D + 1D) - time * .7D) * .35D;
   }
 
   private static double calcFullTextOnHaloRadians(Font font, String text, float textScale, double radius) {

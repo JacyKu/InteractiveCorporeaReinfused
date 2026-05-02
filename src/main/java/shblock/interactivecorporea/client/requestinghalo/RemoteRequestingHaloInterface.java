@@ -12,8 +12,9 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.RenderTick;
+import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
+import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.util.MathUtil;
 import shblock.interactivecorporea.common.util.Vec2d;
 
@@ -36,20 +37,23 @@ public class RemoteRequestingHaloInterface {
 	private double relativeRotation;
 	private boolean hasSelection;
 	private Vec2d selectionPos = new Vec2d();
-
+	private HaloInterfaceStyle interfaceStyle;
+  private int haloTint;
 	private final double radius = 2F;
 	private final double height = 1F;
 	private double itemSpacing;
 	private double itemRotSpacing;
 	private double itemZOffset;
 
-	public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList) {
-		this.playerId = playerId;
-		this.rotationOffset = rotationOffset;
-		this.relativeRotation = 36F;
-		this.itemList = new AnimatedCorporeaItemList(clampListHeight(listHeight));
-		this.searchBar.setSearching(false);
-		update(rotationOffset, listHeight, sortByAmount, itemList);
+public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint) {
+    this.playerId = playerId;
+    this.rotationOffset = rotationOffset;
+    this.relativeRotation = 36F;
+    this.interfaceStyle = interfaceStyle;
+    this.haloTint = haloTint;
+    this.itemList = new AnimatedCorporeaItemList(clampListHeight(listHeight));
+    this.searchBar.setSearching(false);
+    update(rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint);
 	}
 
 	public void startClose() {
@@ -58,12 +62,14 @@ public class RemoteRequestingHaloInterface {
 		closing = true;
 	}
 
-	public void update(float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList) {
+	public void update(float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint) {
 		if (closing) {
 			closing = false;
 			opening = true;
 		}
 		this.rotationOffset = rotationOffset;
+		this.interfaceStyle = interfaceStyle;
+		this.haloTint = haloTint;
 		updateListHeight(listHeight);
 		if (sortByAmount) {
 			this.itemList.setSortMode(SortMode.AMOUNT);
@@ -126,17 +132,7 @@ public class RemoteRequestingHaloInterface {
 		poseStack.push();
 		poseStack.rotate(new Quaternion(Vector3f.YP, (float) (-rotationOffset - relativeRotation), true));
 		double progress = Math.sin((Math.PI / 2F) * openCloseProgress);
-		double fadeWidth = .3;
-		double width = progress * (Math.PI * .25F);
-		RenderUtil.renderPartialHalo(
-				poseStack,
-				radius,
-				width - fadeWidth,
-				height * progress + .05,
-				fadeWidth,
-				0F, .7F, 1F,
-				(float) (progress * .6F)
-		);
+		HaloInterfaceBackground.render(poseStack, radius, height, progress, interfaceStyle, ItemRequestingHalo.unpackTint(haloTint), rotationOffset + relativeRotation);
 		poseStack.pop();
 	}
 

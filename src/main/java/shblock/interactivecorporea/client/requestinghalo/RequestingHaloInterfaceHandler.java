@@ -19,6 +19,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.ModSounds;
+import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
 import shblock.interactivecorporea.common.network.CPacketRequestingHaloState;
 import shblock.interactivecorporea.common.network.CPacketRequestingHaloViewUpdate;
 import shblock.interactivecorporea.common.network.ModPacketHandler;
@@ -186,7 +187,7 @@ public class RequestingHaloInterfaceHandler {
     }
   }
 
-  public static void handleRemoteState(int playerId, boolean open, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList) {
+  public static void handleRemoteState(int playerId, boolean open, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint) {
     if (mc.player != null && mc.player.getId() == playerId) {
       return;
     }
@@ -200,10 +201,10 @@ public class RequestingHaloInterfaceHandler {
     }
 
     if (remote == null) {
-      remote = new RemoteRequestingHaloInterface(playerId, rotationOffset, listHeight, sortByAmount, itemList);
+      remote = new RemoteRequestingHaloInterface(playerId, rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint);
       remoteInterfaces.put(playerId, remote);
     } else {
-      remote.update(rotationOffset, listHeight, sortByAmount, itemList);
+      remote.update(rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint);
     }
   }
 
@@ -242,12 +243,7 @@ public class RequestingHaloInterfaceHandler {
       } else {
         face.updateHaloItem(face.getSlot().getStack(mc.player));
       }
-//      if (mc.currentScreen != null) {
-//        Screen screen = mc.currentScreen;
-//        if (!(screen instanceof ChatScreen)) {
-//          closeInterface();
-//        }
-//      }
+
       MatrixStack stack = new MatrixStack(event.getPoseStack());
       if (!face.render(stack, event.getCamera(), event.getPartialTick())) {
         clearInterface();
@@ -304,30 +300,6 @@ public class RequestingHaloInterfaceHandler {
     }
   }
 
-//  @SubscribeEvent
-//  public static void onGuiMouseClicked(GuiScreenEvent.MouseClickedEvent.Pre event) {
-//    boolean consumed = handleGuiMouseEvent(event.getButton(), GLFW_PRESS);
-//    if (consumed) {
-//      event.setCanceled(true);
-//    }
-//  }
-//
-//  @SubscribeEvent
-//  public static void onGuiMouseRelease(GuiScreenEvent.MouseReleasedEvent.Pre event) {
-//    boolean consumed = handleGuiMouseEvent(event.getButton(), GLFW_RELEASE);
-//    if (consumed) {
-//      event.setCanceled(true);
-//    }
-//  }
-//
-//  private static boolean handleGuiMouseEvent(int button, int action) {
-//    if (getInterface() != null) {
-//      if (!getInterface().isOpenClose()) {
-//
-//      }
-//    }
-//  }
-
   @SubscribeEvent
   public static void onMouseInput(InputEvent.MouseButton.Pre event) {
     if (getInterface() != null) {
@@ -364,14 +336,6 @@ public class RequestingHaloInterfaceHandler {
 
   @SubscribeEvent
   public static void onKeyEvent(InputEvent.Key event) {
-//    if (event.getKey() == GLFW.GLFW_KEY_N && event.getAction() == GLFW.GLFW_PRESS) {
-//      try {
-//        WormholeRenderer.loadShader();
-//        WormholeRenderer.setShaderEnabled(!KeyboardHelper.hasShiftDown());
-//      } catch (IOException e) {
-//        e.printStackTrace();
-//      }
-//    }
     if (getInterface() != null) {
       if (!getInterface().isOpenClose()) {
         getInterface().onKeyEvent(event.getKey(), event.getScanCode(), event.getAction(), event.getModifiers());

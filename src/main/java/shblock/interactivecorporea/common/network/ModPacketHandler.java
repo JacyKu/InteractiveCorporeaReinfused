@@ -12,7 +12,7 @@ import shblock.interactivecorporea.IC;
 import java.util.Optional;
 
 public class ModPacketHandler {
-  private static final String PROTOCOL_VERSION = "1";
+  private static final String PROTOCOL_VERSION = "2";
   public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
       new ResourceLocation(IC.MODID, "main"),
       () -> PROTOCOL_VERSION,

@@ -20,6 +20,7 @@ import shblock.interactivecorporea.client.particle.QuantizationParticleType;
 import shblock.interactivecorporea.common.block.BlockItemQuantizationDevice;
 import shblock.interactivecorporea.common.block.ModBlocks;
 import shblock.interactivecorporea.common.crafting.RequestingHaloAddModuleRecipe;
+import shblock.interactivecorporea.common.crafting.RequestingHaloChangeStyleRecipe;
 import shblock.interactivecorporea.common.crafting.RequestingHaloRemoveModuleRecipe;
 import shblock.interactivecorporea.common.item.ModItems;
 import shblock.interactivecorporea.common.tile.ModTiles;
@@ -57,6 +58,7 @@ public class RegistryHandler {
     } else if (event.getRegistryKey().equals(Registries.RECIPE_SERIALIZER)) {
       event.register(Registries.RECIPE_SERIALIZER, id("requesting_halo_add_module"), () -> RequestingHaloAddModuleRecipe.SERIALIZER);
       event.register(Registries.RECIPE_SERIALIZER, id("requesting_halo_remove_module"), () -> RequestingHaloRemoveModuleRecipe.SERIALIZER);
+      event.register(Registries.RECIPE_SERIALIZER, id("requesting_halo_change_style"), () -> RequestingHaloChangeStyleRecipe.SERIALIZER);
     } else if (event.getRegistryKey().equals(Registries.SOUND_EVENT)) {
       event.register(Registries.SOUND_EVENT, id("halo.open"), () -> ModSounds.haloOpen);
       event.register(Registries.SOUND_EVENT, id("halo.close"), () -> ModSounds.haloClose);

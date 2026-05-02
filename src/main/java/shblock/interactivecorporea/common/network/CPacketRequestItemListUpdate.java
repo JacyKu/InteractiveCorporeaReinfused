@@ -110,6 +110,8 @@ public class CPacketRequestItemListUpdate {
         rotationOffset,
         getRemoteListHeight(player, halo),
         true,
+        ItemRequestingHalo.getInterfaceStyle(halo),
+        ItemRequestingHalo.getHaloTintPacked(halo),
         result
     ));
   }

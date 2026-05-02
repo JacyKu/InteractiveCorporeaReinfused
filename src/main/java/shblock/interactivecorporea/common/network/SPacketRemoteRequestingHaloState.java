@@ -4,6 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
+import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
 import shblock.interactivecorporea.common.util.NetworkHelper;
 
 import java.util.ArrayList;
@@ -17,23 +18,27 @@ public class SPacketRemoteRequestingHaloState {
   private final float rotationOffset;
   private final int listHeight;
   private final boolean sortByAmount;
+  private final HaloInterfaceStyle interfaceStyle;
+  private final int haloTint;
   private final List<ItemStack> itemList;
 
-  public SPacketRemoteRequestingHaloState(int playerId, boolean open, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList) {
+  public SPacketRemoteRequestingHaloState(int playerId, boolean open, float rotationOffset, int listHeight, boolean sortByAmount, HaloInterfaceStyle interfaceStyle, int haloTint, List<ItemStack> itemList) {
     this.playerId = playerId;
     this.open = open;
     this.rotationOffset = rotationOffset;
     this.listHeight = listHeight;
     this.sortByAmount = sortByAmount;
+    this.interfaceStyle = interfaceStyle;
+    this.haloTint = haloTint;
     this.itemList = itemList;
   }
 
-  public static SPacketRemoteRequestingHaloState open(int playerId, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList) {
-    return new SPacketRemoteRequestingHaloState(playerId, true, rotationOffset, listHeight, sortByAmount, itemList);
+  public static SPacketRemoteRequestingHaloState open(int playerId, float rotationOffset, int listHeight, boolean sortByAmount, HaloInterfaceStyle interfaceStyle, int haloTint, List<ItemStack> itemList) {
+    return new SPacketRemoteRequestingHaloState(playerId, true, rotationOffset, listHeight, sortByAmount, interfaceStyle, haloTint, itemList);
   }
 
   public static SPacketRemoteRequestingHaloState close(int playerId) {
-    return new SPacketRemoteRequestingHaloState(playerId, false, 0F, 5, false, Collections.emptyList());
+    return new SPacketRemoteRequestingHaloState(playerId, false, 0F, 5, false, HaloInterfaceStyle.CLASSIC, 0xFFFFFF, Collections.emptyList());
   }
 
   public static SPacketRemoteRequestingHaloState decode(FriendlyByteBuf buf) {
@@ -46,12 +51,14 @@ public class SPacketRemoteRequestingHaloState {
     float rotationOffset = buf.readFloat();
     int listHeight = buf.readVarInt();
     boolean sortByAmount = buf.readBoolean();
+    HaloInterfaceStyle interfaceStyle = buf.readEnum(HaloInterfaceStyle.class);
+    int haloTint = buf.readInt();
     int len = buf.readVarInt();
     List<ItemStack> itemList = new ArrayList<>();
     for (int i = 0; i < len; i++) {
       itemList.add(NetworkHelper.readBigStack(buf));
     }
-    return open(playerId, rotationOffset, listHeight, sortByAmount, itemList);
+    return open(playerId, rotationOffset, listHeight, sortByAmount, interfaceStyle, haloTint, itemList);
   }
 
   public void encode(FriendlyByteBuf buf) {
@@ -64,6 +71,8 @@ public class SPacketRemoteRequestingHaloState {
     buf.writeFloat(rotationOffset);
     buf.writeVarInt(listHeight);
     buf.writeBoolean(sortByAmount);
+    buf.writeEnum(interfaceStyle);
+    buf.writeInt(haloTint);
     buf.writeVarInt(itemList.size());
     for (ItemStack stack : itemList) {
       NetworkHelper.writeBigStack(buf, stack, false);
@@ -71,7 +80,7 @@ public class SPacketRemoteRequestingHaloState {
   }
 
   public void handle(Supplier<NetworkEvent.Context> ctx) {
-    ctx.get().enqueueWork(() -> RequestingHaloInterfaceHandler.handleRemoteState(playerId, open, rotationOffset, listHeight, sortByAmount, itemList));
+    ctx.get().enqueueWork(() -> RequestingHaloInterfaceHandler.handleRemoteState(playerId, open, rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint));
     ctx.get().setPacketHandled(true);
   }
 }
