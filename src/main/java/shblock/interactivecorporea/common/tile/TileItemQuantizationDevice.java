@@ -64,6 +64,7 @@ public class TileItemQuantizationDevice extends BaseCorporeaBlockEntity implemen
 
   public int requestItem(ItemStack stack, Vector3 requestPos, Vector3 normal, ServerPlayer player, ItemStack halo) {
     if (level == null) return 0;
+    if (getSpark() == null) return 0;
     int manaCost = getManaCost(stack.getCount());
     if (manaCost > mana) {
       return 0;

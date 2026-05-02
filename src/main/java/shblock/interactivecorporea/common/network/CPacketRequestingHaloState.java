@@ -57,6 +57,7 @@ public class CPacketRequestingHaloState {
         return;
       }
       RequestingHaloServerState.open(player, slot);
+      CPacketRequestItemListUpdate.sendItemListToPlayer(player, halo);
       CPacketRequestItemListUpdate.broadcastRemoteState(player, halo, rotationOffset);
     });
     ctx.get().setPacketHandled(true);

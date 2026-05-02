@@ -49,28 +49,12 @@ public class CPacketRequestItemListUpdate {
       if (!(stack.getItem() instanceof ItemRequestingHalo)) {
         return;
       }
-      if (!ItemRequestingHalo.canPlayerAccessNetwork(player, stack)) {
-        return;
-      }
-      GlobalPos pos = ItemRequestingHalo.getBoundIndexPosition(stack);
-      if (pos == null) {
-        return;
-      }
-      List<ItemStack> result = queryAt(player, pos);
-      if (result == null) {
-        return;
-      }
-
-      GlobalPos senderPos = ItemRequestingHalo.getBoundSenderPosition(stack);
-      if (result.isEmpty() && senderPos != null) {
-        List<ItemStack> senderResult = querySenderAt(player, senderPos);
-        if (senderResult != null) {
-          result = senderResult;
-        }
-      }
-
-      ModPacketHandler.sendToPlayer(player, new SPacketUpdateItemList(result));
-      broadcastRemoteState(player, stack, result, getRemoteRotationOffset(player));
+      // Always send a result — empty list if the network is unreachable so the
+      // client clears any stale items from storages that are no longer accessible.
+      List<ItemStack> result = queryForHalo(player, stack);
+      List<ItemStack> toSend = result != null ? result : List.of();
+      ModPacketHandler.sendToPlayer(player, new SPacketUpdateItemList(toSend));
+      broadcastRemoteState(player, stack, toSend, getRemoteRotationOffset(player));
     });
     ctx.get().setPacketHandled(true);
   }
@@ -88,9 +72,9 @@ public class CPacketRequestItemListUpdate {
 
   public static void sendItemListToPlayer(ServerPlayer player, ItemStack halo) {
     List<ItemStack> result = queryForHalo(player, halo);
-    if (result != null) {
-      ModPacketHandler.sendToPlayer(player, new SPacketUpdateItemList(result));
-    }
+    // Always send — if null (spark gone / dimension unloaded) send empty list so
+    // the client doesn't keep a stale view of storages that are no longer reachable.
+    ModPacketHandler.sendToPlayer(player, new SPacketUpdateItemList(result != null ? result : List.of()));
   }
 
   public static void broadcastRemoteClose(ServerPlayer player) {
