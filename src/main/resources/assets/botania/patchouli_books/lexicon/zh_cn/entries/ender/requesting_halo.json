@@ -74,6 +74,20 @@
       "item": "botania:lens_warp",
       "title": "interactive_corporea.page.requestingHalo.module.inserter.title",
       "text": "interactive_corporea.page.requestingHalo.module.inserter"
+    },
+    {
+      "type": "text",
+      "title": "interactive_corporea.page.requestingHalo.style.title",
+      "text": "interactive_corporea.page.requestingHalo.style.0"
+    },
+    {
+      "type": "text",
+      "text": "interactive_corporea.page.requestingHalo.style.1"
+    },
+    {
+      "type": "text",
+      "title": "interactive_corporea.page.requestingHalo.tint.title",
+      "text": "interactive_corporea.page.requestingHalo.tint"
     }
   ]
 }

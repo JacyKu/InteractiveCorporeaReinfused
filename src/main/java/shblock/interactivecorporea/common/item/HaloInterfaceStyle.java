@@ -47,6 +47,9 @@ public enum HaloInterfaceStyle {
 
   public String getSerializedName() { return serializedName; }
 
+  /** Returns true for styles that use a GLSL shader (unlocked via Mystical Flower). */
+  public boolean isShaderStyle() { return flowerDye != null; }
+
   @Nullable
   public TagKey<Item> getPetalTag() { return petalTag; }
 

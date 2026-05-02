@@ -11,6 +11,8 @@
   "interactive_corporea.requesting_halo.tooltip.sender_pos": "§3Bound Quantization Device Position: §2",
   "interactive_corporea.requesting_halo.tooltip.modules_prefix": "§dModules: §r",
   "interactive_corporea.requesting_halo.tooltip.style": "§5Panel Style: §r%s",
+  "interactive_corporea.requesting_halo.tooltip.tint": "§5Tint Color: §r%s",
+  "interactive_corporea.requesting_halo.tooltip.tint_default": "Default (White)",
 
   "interactive_corporea.halo_style.classic": "Classic",
   "interactive_corporea.halo_style.mana": "Mana",
@@ -47,7 +49,7 @@
   "key.interactive_corporea.requesting_halo.request_update": "Requesting Halo sort by item count",
 
   "interactive_corporea.entry.requesting_halo": "Requesting Halo",
-  "interactive_corporea.page.requestingHalo.description": "You can use $(item)Requesting Halo/$ to view and request items from a corporea network more easily. Many $(thing)Modules/$ can also be added to provide more functions.<br>To add modules, you just craft the halo with the specific item shown in the later chapters. Crafting the halo with a $(item)light blue/$, $(item)cyan/$, $(item)purple/$, or $(item)lime/$ petal changes the panel style.",
+  "interactive_corporea.page.requestingHalo.description": "You can use $(item)Requesting Halo/$ to view and request items from a corporea network more easily. Many $(thing)Modules/$ can also be added to provide more functions.<br>To add modules, you just craft the halo with the specific item shown in the later chapters. Crafting the halo with a $(item)Botania Mystical Flower/$ or $(item)Petal/$ customizes its appearance — see the last pages for details.",
   "interactive_corporea.page.requestingHalo.example": "An example of the halo interface",
   "interactive_corporea.page.requestingHalo.course.0.title": "Requesting Halo 101",
   "interactive_corporea.page.requestingHalo.course.0": "To use the $(item)Requesting Halo/$, you have to $(thing)bind/$ it to your corporea network first. To bind it to a block, you simply use it on the target block while sneaking. You can see its binding position from the $(thing)tooltip/$.$(li)Binding to a $(l:ender/corporea_index)Corporea Index/$ allows the halo to communicate with it, and $(thing)display/$ the items in its network on the halo interface./$",
@@ -66,6 +68,12 @@
   "interactive_corporea.page.requestingHalo.module.update": "This hourglass will trigger an update of the item counts every 1 seconds, allowing you to see the changes in your network immediately without changing the current order.",
   "interactive_corporea.page.requestingHalo.module.inserter.title": "Quantum Inserter",
   "interactive_corporea.page.requestingHalo.module.inserter": "Adding a $(item)Warp Lens/$ allows the halo to send carried items back through its bound $(l:ender/quantization_device)Quantization Device/$. While the interface is open, press the drop key to try inserting the held item into the Corporea network. Items that cannot fit, or cannot be paid for with the device's Mana, are dropped normally.",
+
+  "interactive_corporea.page.requestingHalo.style.title": "Background Style",
+  "interactive_corporea.page.requestingHalo.style.0": "Crafting the halo with any $(item)Botania Mystical Flower/$ changes its background shader. Each flower color unlocks a different animated style:$(li)$(item)White/$ \u2192 Clouds$(li)$(item)Blue/$ \u2192 Space$(li)$(item)Yellow/$ \u2192 Falling Stars$(li)$(item)Red/$ \u2192 Aurora$(li)$(item)Gray/$ \u2192 Depth Map$(li)$(item)Light Blue/$ \u2192 Foggy Clouds",
+  "interactive_corporea.page.requestingHalo.style.1": "$(li)$(item)Cyan/$ \u2192 Glass Liquid$(li)$(item)Light Gray/$ \u2192 Metal Clouds$(li)$(item)Purple/$ \u2192 Smokish$(li)$(item)Green/$ \u2192 Split$(li)$(item)Pink/$ \u2192 Wavy Fog$(li)$(item)Orange/$ \u2192 Wavy Pattern$(br2)The four legacy panel styles (Classic, Mana, Corporea, Botania) can be set by crafting with a $(item)light blue/$, $(item)cyan/$, $(item)purple/$, or $(item)lime/$ $(thing)petal/$ respectively.",
+  "interactive_corporea.page.requestingHalo.tint.title": "Halo Tint Color",
+  "interactive_corporea.page.requestingHalo.tint": "Crafting the halo with any $(item)Botania Petal/$ tints the overlay panels and glow with that color, blending it into the background shader. All 16 dye colors are supported, and the tint can be combined with any background style.",
 
   "interactive_corporea.entry.quantization_device": "Quantization Device",
   "interactive_corporea.page.quantizationDevice.0": "Using the power of $(item)Luminizer/$, this device can break items down into \"$(thing)Quantum Particles/$\". These particles are so small and light that they can be teleported to anywhere in th world instantly, and be reconstructed into the original item.",

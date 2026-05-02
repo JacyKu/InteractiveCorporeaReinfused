@@ -11,6 +11,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.UseOnContext;
@@ -46,6 +47,7 @@ public class ItemRequestingHalo extends Item {
   private static final String PREFIX_CRAFTING_SLOT_ITEMS = "crafting_slot_items";
   private static final String PREFIX_INTERFACE_STYLE = "interface_style";
   private static final String PREFIX_HALO_TINT = "halo_tint"; // packed 0xRRGGBB, default 0xFFFFFF
+  private static final String PREFIX_HALO_TINT_DYE = "halo_tint_dye"; // DyeColor.getId(), -1 = default
 
   public ItemRequestingHalo() {
     super(new Properties().stacksTo(1));
@@ -220,6 +222,24 @@ public class ItemRequestingHalo extends Item {
     int g = Math.min(255, (int)(raw[1] * scale * 255));
     int b = Math.min(255, (int)(raw[2] * scale * 255));
     ItemNBTHelper.setInt(stack, PREFIX_HALO_TINT, (r << 16) | (g << 8) | b);
+    ItemNBTHelper.setInt(stack, PREFIX_HALO_TINT_DYE, dye.getId());
+  }
+
+  @Nullable
+  public static DyeColor getTintDyeColor(ItemStack stack) {
+    int id = ItemNBTHelper.getInt(stack, PREFIX_HALO_TINT_DYE, -1);
+    if (id < 0) return null;
+    return DyeColor.byId(id);
+  }
+
+  private static String formatDyeName(DyeColor dye) {
+    String[] words = dye.getName().split("_");
+    StringBuilder sb = new StringBuilder();
+    for (String word : words) {
+      if (sb.length() > 0) sb.append(' ');
+      sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+    }
+    return sb.toString();
   }
 
   public static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo) {
@@ -299,6 +319,10 @@ public class ItemRequestingHalo extends Item {
 
       HaloInterfaceStyle style = getInterfaceStyle(stack);
       tooltip.add(Component.literal(I18n.get(IC.MODID + ".requesting_halo.tooltip.style", I18n.get(style.translationKey))));
+
+      DyeColor tintDye = getTintDyeColor(stack);
+      String tintName = tintDye != null ? formatDyeName(tintDye) : I18n.get(IC.MODID + ".requesting_halo.tooltip.tint_default");
+      tooltip.add(Component.literal(I18n.get(IC.MODID + ".requesting_halo.tooltip.tint", tintName)));
 
       if (ItemRequestingHalo.isAnyModuleInstalled(stack)) {
         StringBuilder builder = new StringBuilder(I18n.get(IC.MODID + ".requesting_halo.tooltip.modules_prefix"));

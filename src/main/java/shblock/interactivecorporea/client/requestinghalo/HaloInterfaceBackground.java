@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Vector3f;
+import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.client.render.ModRenderTypes;
 import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.RenderTick;
@@ -23,6 +24,9 @@ public final class HaloInterfaceBackground {
 
   public static void render(MatrixStack ms, double radius, double height, double progress,
       HaloInterfaceStyle style, float[] haloTint, double worldRotDeg) {
+    if (!ModConfig.CLIENT.enableHaloShaders.get() && style.isShaderStyle()) {
+      style = HaloInterfaceStyle.CLASSIC;
+    }
     switch (style) {
       case CLASSIC:
         renderClassic(ms, radius, height, progress);

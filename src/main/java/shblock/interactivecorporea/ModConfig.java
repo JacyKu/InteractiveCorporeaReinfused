@@ -6,12 +6,16 @@ import org.apache.commons.lang3.tuple.Pair;
 public final class ModConfig {
   public static class Client {
     public final ForgeConfigSpec.BooleanValue itemRequestingHaloAnimation;
+    public final ForgeConfigSpec.BooleanValue enableHaloShaders;
 
     public Client(ForgeConfigSpec.Builder builder) {
       builder.push("Render");
       itemRequestingHaloAnimation = builder
           .comment("Enable the animation of requesting halo item")
           .define("itemRequestingHaloAnimation", true);
+      enableHaloShaders = builder
+          .comment("Enable animated GLSL shader backgrounds on the Requesting Halo. Disabling this also hides other players' shader backgrounds.")
+          .define("enableHaloShaders", true);
       builder.pop();
     }
   }
