@@ -22,6 +22,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(POSITION_COLOR_SHADER)
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -36,6 +37,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(POSITION_COLOR_TEX_SHADER)
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -49,6 +51,7 @@ public class ModRenderTypes extends RenderStateShard {
         RenderType.CompositeState.builder()
             .setShaderState(POSITION_COLOR_SHADER)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -63,6 +66,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(POSITION_COLOR_SHADER)
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -81,6 +85,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloCloudShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -97,6 +102,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloSpaceShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -113,6 +119,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloFallingStarsShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -129,6 +136,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloLavaLampShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -145,6 +153,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloDepthMapShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -161,6 +170,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloFoggyCloudShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -177,6 +187,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloGlassLiquidShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -193,6 +204,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloMetalCloudShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -209,6 +221,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloSmokishShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -225,6 +238,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloSplitShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -241,6 +255,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloWavyFogShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 
@@ -257,6 +272,7 @@ public class ModRenderTypes extends RenderStateShard {
             .setShaderState(new ShaderStateShard(() -> haloWavyPatternShader))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
 

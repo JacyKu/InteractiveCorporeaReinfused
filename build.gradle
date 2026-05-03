@@ -96,6 +96,13 @@ repositories {
         name = 'C4'
         url = 'https://maven.theillusivec4.top/'
     }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
 }
 
 dependencies {
@@ -110,6 +117,10 @@ dependencies {
 
     modCompileOnly("vazkii.patchouli:Patchouli:${patchouli_version}")
     modRuntimeOnly("vazkii.patchouli:Patchouli:${patchouli_version}")
+
+    modRuntimeOnly("maven.modrinth:oculus:${oculus_version}")
+    modRuntimeOnly("maven.modrinth:embeddium:${embeddium_version}")
+
 }
 
 tasks.withType(JavaCompile).configureEach {
