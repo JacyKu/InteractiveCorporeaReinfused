@@ -219,17 +219,21 @@ public class RequestingHaloInterfaceHandler {
   }
 
   public static void handleRemoteViewUpdate(int playerId, float rotationOffset, float relativeRotation, boolean hasSelection, float selectionX, float selectionY) {
-    handleRemoteViewUpdate(playerId, rotationOffset, relativeRotation, 5, hasSelection, selectionX, selectionY, "");
+    handleRemoteViewUpdate(playerId, rotationOffset, relativeRotation, 5, hasSelection, selectionX, selectionY, "", false, 0, 0, 0);
   }
 
   public static void handleRemoteViewUpdate(int playerId, float rotationOffset, float relativeRotation, int listHeight, boolean hasSelection, float selectionX, float selectionY, String searchString) {
+    handleRemoteViewUpdate(playerId, rotationOffset, relativeRotation, listHeight, hasSelection, selectionX, selectionY, searchString, false, 0, 0, 0);
+  }
+
+  public static void handleRemoteViewUpdate(int playerId, float rotationOffset, float relativeRotation, int listHeight, boolean hasSelection, float selectionX, float selectionY, String searchString, boolean anchored, double anchoredX, double anchoredY, double anchoredZ) {
     if (mc.player != null && mc.player.getId() == playerId) {
       return;
     }
 
     RemoteRequestingHaloInterface remote = remoteInterfaces.get(playerId);
     if (remote != null) {
-      remote.updateView(rotationOffset, relativeRotation, listHeight, hasSelection, selectionX, selectionY, searchString);
+      remote.updateView(rotationOffset, relativeRotation, listHeight, hasSelection, selectionX, selectionY, searchString, anchored, anchoredX, anchoredY, anchoredZ);
     }
   }
 
@@ -279,6 +283,7 @@ public class RequestingHaloInterfaceHandler {
     lastViewSyncTick = mc.player.tickCount;
 
     Vec2d selectionPos = face.getSelectionTargetPos();
+    net.minecraft.util.math.vector.Vector3d anchoredPos = face.getAnchoredWorldPos();
     ModPacketHandler.sendToServer(new CPacketRequestingHaloViewUpdate(
         (float) face.getRotationOffset(),
         (float) face.getRelativeRotation(),
@@ -286,7 +291,11 @@ public class RequestingHaloInterfaceHandler {
         selectionPos != null,
         selectionPos == null ? 0F : (float) selectionPos.x,
         selectionPos == null ? 0F : (float) selectionPos.y,
-        face.getSearchString()
+        face.getSearchString(),
+        face.isAnchored(),
+        anchoredPos != null ? anchoredPos.x : 0,
+        anchoredPos != null ? anchoredPos.y : 0,
+        anchoredPos != null ? anchoredPos.z : 0
     ));
   }
 

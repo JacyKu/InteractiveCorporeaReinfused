@@ -41,12 +41,14 @@
   "interactive_corporea.halo_module.far_reach": "Ring of Far Reach",
   "interactive_corporea.halo_module.greater_magnate": "Greater Ring of Magnetization",
   "interactive_corporea.halo_module.black_hole": "Black Hole Talisman",
+  "interactive_corporea.halo_module.anchor": "World Anchor",
   "interactive_corporea.halo_module.range": "Range module: +%s",
 
   "key.interactive_corporea.category": "Interactive Corporea",
   "key.interactive_corporea.requesting_halo": "Open/Close Requesting Halo",
   "key.interactive_corporea.requesting_halo.search": "Requesting Halo toggle search",
   "key.interactive_corporea.requesting_halo.request_update": "Requesting Halo sort by item count",
+  "key.interactive_corporea.requesting_halo.anchor": "Requesting Halo toggle anchor",
 
   "interactive_corporea.entry.requesting_halo": "Requesting Halo",
   "interactive_corporea.page.requestingHalo.description": "You can use $(item)Requesting Halo/$ to view and request items from a corporea network more easily. Many $(thing)Modules/$ can also be added to provide more functions.<br>To add modules, you just craft the halo with the specific item shown in the later chapters. Crafting the halo with a $(item)Botania Mystical Flower/$ or $(item)Petal/$ customizes its appearance — see the last pages for details.",

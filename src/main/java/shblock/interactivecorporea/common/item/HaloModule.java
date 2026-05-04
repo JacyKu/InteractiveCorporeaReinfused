@@ -3,6 +3,7 @@ package shblock.interactivecorporea.common.item;
 import net.minecraft.world.item.Item;
 import shblock.interactivecorporea.IC;
 import vazkii.botania.common.block.BotaniaBlocks;
+import vazkii.botania.common.block.BotaniaFlowerBlocks;
 import vazkii.botania.common.item.BotaniaItems;
 
 import javax.annotation.Nullable;
@@ -12,6 +13,7 @@ public enum HaloModule {
   RECEIVE(1, "receive", BotaniaBlocks.lightRelayDefault.asItem()),
   SEARCH(2, "search", BotaniaItems.itemFinder),
   UPDATE(3, "update", BotaniaBlocks.hourglass.asItem()),
+  ANCHOR(4, "anchor", BotaniaFlowerBlocks.pureDaisyFloating.asItem()),
   MAGNATE(5, "magnate", BotaniaItems.magnetRing, 10),
   CRAFTING(6, "crafting", BotaniaItems.autocraftingHalo),
   QUANTUM_INSERTER(7, "quantum_inserter", BotaniaItems.lensWarp),

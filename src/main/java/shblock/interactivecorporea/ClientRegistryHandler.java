@@ -35,6 +35,7 @@ public class ClientRegistryHandler {
     event.register(RequestingHaloInterfaceHandler.KEY_BINDING);
     event.register(RequestingHaloInterface.KEY_SEARCH);
     event.register(RequestingHaloInterface.KEY_REQUEST_UPDATE);
+    event.register(RequestingHaloInterface.KEY_ANCHOR);
   }
 
   @SubscribeEvent

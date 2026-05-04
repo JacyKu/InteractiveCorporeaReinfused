@@ -45,6 +45,9 @@ public class RemoteRequestingHaloInterface {
 	private double itemRotSpacing;
 	private double itemZOffset;
 
+	private boolean anchored = false;
+	private Vec3 anchoredWorldPos = null;
+
 public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint) {
     this.playerId = playerId;
     this.rotationOffset = rotationOffset;
@@ -79,12 +82,18 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 	}
 
 	public void updateView(float rotationOffset, float relativeRotation, int listHeight, boolean hasSelection, float selectionX, float selectionY, String searchString) {
+		updateView(rotationOffset, relativeRotation, listHeight, hasSelection, selectionX, selectionY, searchString, false, 0, 0, 0);
+	}
+
+	public void updateView(float rotationOffset, float relativeRotation, int listHeight, boolean hasSelection, float selectionX, float selectionY, String searchString, boolean anchored, double anchoredX, double anchoredY, double anchoredZ) {
 		this.rotationOffset = rotationOffset;
 		this.relativeRotation = relativeRotation;
 		this.hasSelection = hasSelection;
 		this.selectionPos.set(selectionX, selectionY);
 		updateListHeight(listHeight);
 		updateSearch(searchString == null ? "" : searchString);
+		this.anchored = anchored;
+		this.anchoredWorldPos = anchored ? new Vec3(anchoredX, anchoredY, anchoredZ) : null;
 	}
 
 	public boolean render(MatrixStack poseStack, Camera camera, float partialTicks) {
@@ -99,10 +108,10 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 		}
 
 		Vec3 cameraPos = camera.getPosition();
-		Vec3 eyePos = player.getEyePosition(partialTicks);
+		Vec3 haloCenter = (anchored && anchoredWorldPos != null) ? anchoredWorldPos : player.getEyePosition(partialTicks);
 
 		poseStack.push();
-		poseStack.translate(eyePos.x - cameraPos.x, eyePos.y - cameraPos.y, eyePos.z - cameraPos.z);
+		poseStack.translate(haloCenter.x - cameraPos.x, haloCenter.y - cameraPos.y, haloCenter.z - cameraPos.z);
 
 		renderHaloBody(poseStack);
 		renderItems(poseStack);
@@ -160,12 +169,20 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 
 			Vec2d pos = animatedStack.getPos();
 			float rot = (float) ((pos.x - colOffset) * itemRotSpacing);
-			double degreeDiff = Math.abs(relativeRotation - Math.toDegrees(rot));
-			if (degreeDiff >= widthDegrees) {
-				continue;
+			if (!anchored) {
+				double degreeDiff = Math.abs(relativeRotation - Math.toDegrees(rot));
+				if (degreeDiff >= widthDegrees) {
+					continue;
+				}
 			}
 
-			float currentScale = (float) (scale * Math.sin(MathHelper.clamp(widthDegrees - degreeDiff, 0F, fadeDegrees) / fadeDegrees * Math.PI * .5F));
+			float currentScale;
+			if (anchored) {
+				currentScale = (float) scale;
+			} else {
+				double degreeDiff = Math.abs(relativeRotation - Math.toDegrees(rot));
+				currentScale = (float) (scale * Math.sin(MathHelper.clamp(widthDegrees - degreeDiff, 0F, fadeDegrees) / fadeDegrees * Math.PI * .5F));
+			}
 			poseStack.push();
 			poseStack.rotate(new Quaternion(Vector3f.YP, -rot, false));
 			poseStack.translate(0F, -(pos.y - (itemList.getHeight() - 1D) / 2D) * itemSpacing, itemZOffset);
