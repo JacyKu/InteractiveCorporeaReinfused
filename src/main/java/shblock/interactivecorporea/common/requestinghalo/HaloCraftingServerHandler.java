@@ -53,9 +53,5 @@ public class HaloCraftingServerHandler {
       return pos.add(centerSlotPos);
     }
 
-//    public boolean tick() {
-//
-//      progress ++;
-//    }
   }
 }

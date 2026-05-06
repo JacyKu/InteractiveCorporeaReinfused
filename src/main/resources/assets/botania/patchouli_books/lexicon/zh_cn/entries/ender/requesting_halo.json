@@ -76,6 +76,31 @@
       "text": "interactive_corporea.page.requestingHalo.module.inserter"
     },
     {
+      "type": "spotlight",
+      "item": "botania:floating_pure_daisy",
+      "title": "interactive_corporea.page.requestingHalo.module.anchor.title",
+      "text": "interactive_corporea.page.requestingHalo.module.anchor",
+      "anchor": "module_anchor"
+    },
+    {
+      "type": "spotlight",
+      "item": "botania:auto_crafting_halo",
+      "title": "interactive_corporea.page.requestingHalo.module.crafting.title",
+      "text": "interactive_corporea.page.requestingHalo.module.crafting",
+      "anchor": "module_crafting"
+    },
+    {
+      "type": "spotlight",
+      "item": "botania:magnet_ring",
+      "title": "interactive_corporea.page.requestingHalo.module.range.title",
+      "text": "interactive_corporea.page.requestingHalo.module.range",
+      "anchor": "module_range"
+    },
+    {
+      "type": "text",
+      "text": "interactive_corporea.page.requestingHalo.module.range_1"
+    },
+    {
       "type": "text",
       "title": "interactive_corporea.page.requestingHalo.style.title",
       "text": "interactive_corporea.page.requestingHalo.style.0"

@@ -19,6 +19,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import shblock.interactivecorporea.IC;
+import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.ModSounds;
 import shblock.interactivecorporea.client.render.DeferredWorldRenderQueue;
 import shblock.interactivecorporea.client.renderer.tile.QuantizationDeviceWandHUD;
@@ -166,7 +167,10 @@ public class RequestingHaloInterfaceHandler {
 
   private static void playOutOfRangeSound(Player player) {
     if (mc.level != null) {
-      mc.level.playLocalSound(player.getX(), player.getY(), player.getZ(), ModSounds.haloOutOfRange, SoundSource.PLAYERS, 1F, 1F, false);
+      float volume = ModConfig.scaleSoundVolume(ModSounds.haloOutOfRange, 1F);
+      if (volume > 0F) {
+        mc.level.playLocalSound(player.getX(), player.getY(), player.getZ(), ModSounds.haloOutOfRange, SoundSource.PLAYERS, volume, 1F, false);
+      }
     }
   }
 

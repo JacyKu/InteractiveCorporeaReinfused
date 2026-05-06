@@ -24,6 +24,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import shblock.interactivecorporea.IC;
+import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.client.renderer.item.ISTERRequestingHalo;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
 import shblock.interactivecorporea.client.util.KeyboardHelper;
@@ -132,6 +133,7 @@ public class ItemRequestingHalo extends Item {
   }
 
   public static boolean canInstallModule(ItemStack stack, HaloModule module) {
+    if (!ModConfig.isModuleEnabled(module)) return false;
     int mask = ItemNBTHelper.getInt(stack, PREFIX_MODULES, 0);
     if (module.containsThis(mask)) return false;
     return !module.isRangeModule() || getInstalledRangeModule(stack) == null;
@@ -148,7 +150,7 @@ public class ItemRequestingHalo extends Item {
 
   public static boolean isModuleInstalled(ItemStack stack, HaloModule module) {
     int mask = ItemNBTHelper.getInt(stack, PREFIX_MODULES, 0);
-    return module.containsThis(mask);
+    return ModConfig.isModuleEnabled(module) && module.containsThis(mask);
   }
 
   public static boolean isAnyModuleInstalled(ItemStack stack) {
@@ -162,14 +164,14 @@ public class ItemRequestingHalo extends Item {
   }
 
   public static int getNetworkRange(ItemStack stack) {
-    return BASE_NETWORK_RANGE + getRangeBonus(stack);
+    return ModConfig.getBaseRequestingHaloRange() + getRangeBonus(stack);
   }
 
   public static int getRangeBonus(ItemStack stack) {
     int bonus = 0;
     for (HaloModule module : HaloModule.values()) {
       if (module.isRangeModule() && isModuleInstalled(stack, module)) {
-        bonus += module.rangeBonus;
+        bonus += ModConfig.getRangeBonus(module);
       }
     }
     return bonus;

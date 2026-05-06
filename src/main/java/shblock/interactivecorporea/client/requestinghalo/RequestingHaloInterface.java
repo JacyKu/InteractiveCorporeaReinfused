@@ -451,22 +451,28 @@ public class RequestingHaloInterface {
   private float particleSpawnTimer = 0F;
   private void spawnParticleLineOnHalo(double relativeRot) {
     if (mc.level == null || mc.player == null) return;
+    double particleMultiplier = ModConfig.getParticleMultiplier();
+    if (particleMultiplier <= 0D) {
+      particleSpawnTimer = 0F;
+      return;
+    }
 
     Vector3d mid = new Vector3d(radius + .12D, 0, 0);
     mid = mid.rotateYaw((float) Math.toRadians(-rotationOffset - 90 - relativeRot));
     mid = mid.add(getHaloCenter());
     particleSpawnTimer += RenderTick.delta;
+    double interval = ModConfig.scaleParticleInterval(.1D);
     HaloInterfaceStyle style = ItemRequestingHalo.getInterfaceStyle(haloItem);
     float[] tint = ItemRequestingHalo.getHaloTintColor(haloItem);
     int cnt = 0;
-    for (int i = 0; i < (int) (particleSpawnTimer / .1); i++) {
+    for (int i = 0; i < (int) (particleSpawnTimer / interval); i++) {
       Vector3d pos = mid.add(0, (magicParticleRandom.nextDouble() * 2 - 1) * height, 0);
       float[] color = HaloStylePalette.tint(HaloStylePalette.particle(style, RenderTick.total * .01D + magicParticleRandom.nextDouble()), tint, .82F, .08F);
       float size = style == HaloInterfaceStyle.CLASSIC ? .75F : 1F + magicParticleRandom.nextFloat() * .35F;
       mc.level.addParticle(new DustParticleOptions(new org.joml.Vector3f(color[0], color[1], color[2]), size), pos.x, pos.y, pos.z, 0, .004D + magicParticleRandom.nextDouble() * .004D, 0);
       cnt++;
     }
-    particleSpawnTimer -= cnt * .1;
+    particleSpawnTimer -= cnt * interval;
   }
 
   private float transitionParticleSpawnTimer = 0F;
@@ -476,9 +482,16 @@ public class RequestingHaloInterface {
       return;
     }
 
-    float interval = style == HaloInterfaceStyle.BOTANIA ? .035F : .045F;
+    double particleMultiplier = ModConfig.getParticleMultiplier();
+    if (particleMultiplier <= 0D) {
+      transitionParticleSpawnTimer = 0F;
+      return;
+    }
+
+    double interval = ModConfig.scaleParticleInterval(style == HaloInterfaceStyle.BOTANIA ? .035D : .045D);
     transitionParticleSpawnTimer += RenderTick.delta;
-    int spawnCount = Math.min((int) (transitionParticleSpawnTimer / interval), style == HaloInterfaceStyle.BOTANIA ? 5 : 4);
+    int maxSpawnCount = ModConfig.scaleParticleCount(style == HaloInterfaceStyle.BOTANIA ? 5 : 4);
+    int spawnCount = Math.min((int) (transitionParticleSpawnTimer / interval), maxSpawnCount);
     if (spawnCount <= 0) {
       return;
     }
@@ -1004,7 +1017,11 @@ public class RequestingHaloInterface {
   public void playSound(double x, double y, double z, SoundEvent sound, float volume, float pitch) {
     if (mc.level != null) {
       ClientLevel world = mc.level;
-      world.playLocalSound(x, y, z, sound, SoundSource.PLAYERS, volume, pitch, false);
+      float scaledVolume = ModConfig.scaleSoundVolume(sound, volume);
+      if (scaledVolume <= 0F) {
+        return;
+      }
+      world.playLocalSound(x, y, z, sound, SoundSource.PLAYERS, scaledVolume, pitch, false);
     }
   }
 

@@ -64,7 +64,6 @@ public class CraftingInterfaceSlot {
     float size = (float) (mouseOverFactor * .05 + SIZE);
     ms.scale(size, size, size);
 
-    //TODO: bg color based on item availability
     float r = .97F;
     float g = 0F;
     float b = .98F;
@@ -123,7 +122,7 @@ public class CraftingInterfaceSlot {
     buffers.endBatch(ModRenderTypes.craftingSlotBg);
   }
 
-  private void renderRealItem(MatrixStack ms) { //TODO!!!!!!!!!!: cache the real item (server send update packet to update the cache)
+  private void renderRealItem(MatrixStack ms) {
     ItemStack stack = ItemRequestingHalo.getStackInCraftingSlot(craftingInterface.haloStack, slot);
     if (stack.isEmpty()) return;
     ms.push();

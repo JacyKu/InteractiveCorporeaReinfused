@@ -1,5 +1,6 @@
 package shblock.interactivecorporea.client.render;
 
+import shblock.interactivecorporea.ModConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import net.minecraft.client.Minecraft;
@@ -34,6 +35,24 @@ public final class OculusCompat {
   private OculusCompat() {
   }
 
+  private static void debugInfo(String message, Object... args) {
+    if (ModConfig.isShaderDebugEnabled()) {
+      LOGGER.info(message, args);
+    }
+  }
+
+  private static void debugWarn(String message, Object... args) {
+    if (ModConfig.isShaderDebugEnabled()) {
+      LOGGER.warn(message, args);
+    }
+  }
+
+  private static void debugWarn(String message, Throwable throwable) {
+    if (ModConfig.isShaderDebugEnabled()) {
+      LOGGER.warn(message, throwable);
+    }
+  }
+
   public static void withoutGbufferOverride(Runnable renderer) {
     if (!initialize()) {
       renderer.run();
@@ -48,7 +67,7 @@ public final class OculusCompat {
         syncProgram.invoke(pipeline);
         logCompatActive(pipeline, listener);
       } catch (ReflectiveOperationException | RuntimeException e) {
-        LOGGER.warn("[HaloShaderDebug] Oculus compat beginPostChain/syncProgram failed; rendering without override.", e);
+        debugWarn("[HaloShaderDebug] Oculus compat beginPostChain/syncProgram failed; rendering without override.", e);
         unavailable = true;
         renderer.run();
         return;
@@ -61,7 +80,7 @@ public final class OculusCompat {
           endPostChain.invoke(listener);
           syncProgram.invoke(pipeline);
         } catch (ReflectiveOperationException | RuntimeException e) {
-          LOGGER.warn("[HaloShaderDebug] Oculus compat endPostChain/syncProgram failed after halo shader draw.", e);
+          debugWarn("[HaloShaderDebug] Oculus compat endPostChain/syncProgram failed after halo shader draw.", e);
           unavailable = true;
         }
       }
@@ -85,7 +104,7 @@ public final class OculusCompat {
     try {
       unlockDepthColor.invoke(null);
     } catch (ReflectiveOperationException | RuntimeException e) {
-      LOGGER.warn("[HaloShaderDebug] Failed to unlock Oculus depth/color state for halo shader rendering.", e);
+      debugWarn("[HaloShaderDebug] Failed to unlock Oculus depth/color state for halo shader rendering.", e);
     }
   }
 
@@ -99,7 +118,7 @@ public final class OculusCompat {
       Optional<?> pipeline = (Optional<?>) getPipeline.invoke(pipelineManager);
       return pipeline.orElse(null);
     } catch (ReflectiveOperationException | RuntimeException e) {
-      LOGGER.warn("[HaloShaderDebug] Failed to fetch Oculus pipeline.", e);
+      debugWarn("[HaloShaderDebug] Failed to fetch Oculus pipeline.", e);
       unavailable = true;
       return null;
     }
@@ -113,7 +132,7 @@ public final class OculusCompat {
     try {
       return getRenderTargetStateListener.invoke(pipeline);
     } catch (ReflectiveOperationException | RuntimeException e) {
-      LOGGER.warn("[HaloShaderDebug] Failed to fetch Oculus render target state listener.", e);
+      debugWarn("[HaloShaderDebug] Failed to fetch Oculus render target state listener.", e);
       unavailable = true;
       return null;
     }
@@ -146,11 +165,11 @@ public final class OculusCompat {
       legacyOverrideApiAvailable = syncProgram != null && beginPostChain != null && endPostChain != null;
 
       if (!loggedInitializationSuccess) {
-        LOGGER.info("[HaloShaderDebug] Oculus compat initialized successfully for halo shader rendering. rootPackage={}, classLoader={}, legacyOverrideApiAvailable={}", resolvedRootPackage, resolvedClassLoader, legacyOverrideApiAvailable);
+        debugInfo("[HaloShaderDebug] Oculus compat initialized successfully for halo shader rendering. rootPackage={}, classLoader={}, legacyOverrideApiAvailable={}", resolvedRootPackage, resolvedClassLoader, legacyOverrideApiAvailable);
         loggedInitializationSuccess = true;
       }
     } catch (ClassNotFoundException | NoSuchMethodException | LinkageError e) {
-      LOGGER.warn("[HaloShaderDebug] Oculus compat unavailable for halo shader rendering.", e);
+      debugWarn("[HaloShaderDebug] Oculus compat unavailable for halo shader rendering.", e);
       unavailable = true;
     }
 
@@ -246,14 +265,14 @@ public final class OculusCompat {
 
   private static void logMissingPipeline() {
     if (!loggedMissingPipeline) {
-      LOGGER.info("[HaloShaderDebug] No active Oculus pipeline found; halo shader draw will run without Oculus compat override.");
+      debugInfo("[HaloShaderDebug] No active Oculus pipeline found; halo shader draw will run without Oculus compat override.");
       loggedMissingPipeline = true;
     }
   }
 
   private static void logMissingListener(Object pipeline) {
     if (!loggedMissingListener) {
-      LOGGER.warn("[HaloShaderDebug] Oculus pipeline {} had no render target state listener; halo shader draw will run without override.", pipeline.getClass().getName());
+      debugWarn("[HaloShaderDebug] Oculus pipeline {} had no render target state listener; halo shader draw will run without override.", pipeline.getClass().getName());
       loggedMissingListener = true;
     }
   }
@@ -264,12 +283,12 @@ public final class OculusCompat {
       return;
     }
     nextStatusLogAt = now + STATUS_LOG_INTERVAL_MS;
-    LOGGER.info("[HaloShaderDebug] Oculus compat active. pipeline={}, listener={}", pipeline.getClass().getName(), listener.getClass().getName());
+    debugInfo("[HaloShaderDebug] Oculus compat active. pipeline={}, listener={}", pipeline.getClass().getName(), listener.getClass().getName());
   }
 
   private static void logLegacyApiUnavailable() {
     if (!loggedLegacyApiUnavailable && initialized && !unavailable && !legacyOverrideApiAvailable) {
-      LOGGER.info("[HaloShaderDebug] Oculus legacy pipeline override API is not present in this runtime; halo rendering will rely on ShaderInstance depth/color unlock only.");
+      debugInfo("[HaloShaderDebug] Oculus legacy pipeline override API is not present in this runtime; halo rendering will rely on ShaderInstance depth/color unlock only.");
       loggedLegacyApiUnavailable = true;
     }
   }

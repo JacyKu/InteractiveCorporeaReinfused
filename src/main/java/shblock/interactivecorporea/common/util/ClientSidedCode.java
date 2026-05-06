@@ -6,6 +6,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.network.NetworkEvent;
+import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.ModSounds;
 import shblock.interactivecorporea.client.particle.QuantizationParticleData;
 import shblock.interactivecorporea.common.network.SPacketPlayQuantizationEffect;
@@ -31,8 +32,11 @@ public class ClientSidedCode {
       QuantizationParticleData data;
       switch (type) {
         case SPacketPlayQuantizationEffect.QUANTIZATION:
-          mc.level.playLocalSound(pos.x, pos.y, pos.z, ModSounds.quantumSend, SoundSource.PLAYERS, .8F, 1F, false);
-          for (int i = 0; i < 512; i++) {
+          float quantizationVolume = ModConfig.scaleSoundVolume(ModSounds.quantumSend, .8F);
+          if (quantizationVolume > 0F) {
+            mc.level.playLocalSound(pos.x, pos.y, pos.z, ModSounds.quantumSend, SoundSource.PLAYERS, quantizationVolume, 1F, false);
+          }
+          for (int i = 0; i < ModConfig.scaleParticleCount(512); i++) {
             double particleDist = 2 * scale;
             Vector3 dest = new Vector3(
                 SPacketPlayQuantizationEffect.RAND.nextDouble() * 2 - 1,
@@ -45,9 +49,12 @@ public class ClientSidedCode {
           }
           break;
         case SPacketPlayQuantizationEffect.CONSTRUCTION:
-          mc.level.playLocalSound(pos.x, pos.y, pos.z, ModSounds.quantumReceive, SoundSource.PLAYERS, .8F, 1F, false);
+          float constructionVolume = ModConfig.scaleSoundVolume(ModSounds.quantumReceive, .8F);
+          if (constructionVolume > 0F) {
+            mc.level.playLocalSound(pos.x, pos.y, pos.z, ModSounds.quantumReceive, SoundSource.PLAYERS, constructionVolume, 1F, false);
+          }
           Vector3 rotBase = normal.perpendicular().normalize().multiply(.5 * scale);
-          for (int i = 0; i < 128; i++) {
+          for (int i = 0; i < ModConfig.scaleParticleCount(128); i++) {
             Vector3 roted = rotBase.rotate(SPacketPlayQuantizationEffect.RAND.nextDouble() * Math.PI * 2, normal);
             Vector3 p = roted.add(pos);
             data = new QuantizationParticleData(roted.negate(), time, stack, false);

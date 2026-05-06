@@ -1,26 +1,29 @@
-## Interactive Corporea 1.20.1 Port
+# Interactive Corporea Reinfused
 
-Interactive Corporea is an add-on mod for [Botania](https://www.curseforge.com/minecraft/mc-mods/botania "Botania").
-The goal of the mod is to make the Corporea system in Botania easier to use and more "magical" while being faithful to [Botania's design philosophy](https://botaniamod.net/ "") (Mainly no "Full-screen" GUIs).
+Interactive Corporea Reinfused is an add-on mod for [Botania](https://www.curseforge.com/minecraft/mc-mods/botania "Botania") that makes the Corporea system easier to use, more immersive, and more magical while staying faithful to [Botania's design philosophy](https://botaniamod.net/ "Botania") of avoiding full-screen GUIs.
 
-I've ported the mod to Forge 1.20.1-47.4.10
+> Ported to: Forge 1.20.1-47.4.10  
+> Recent additions and fixes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
-### Known issues
-- The rainbow glow used in the Requesting Halo and in the Quantization Device does not display the rays correctly.
+## Highlights
 
-### Todo
-- Add support for crafting in the Halo. (maybe)
-- Add toggle to move Halo with player view angle
+- In-world **Requesting Halo** interface for browsing and requesting items from a Corporea network.
+- Halo modules for **search**, **HUD details**, **auto updates**, **anchoring**, **item return**, and **range expansion**.
+- Animated **shader-based halo backgrounds** unlocked by Botania flowers, plus legacy petal styles.
+- **Oculus compatibility** and **dynamic lighting** intergration.
 
-### In-game screenshot
-![image](https://media.forgecdn.net/attachments/description/null/description_b85727f0-8be8-4cc6-9c9e-18062ee54bbf.png)
+## In-Game Screenshot
 
-### Halo Background Styles
+![Requesting Halo screenshot](https://media.forgecdn.net/attachments/description/null/description_b85727f0-8be8-4cc6-9c9e-18062ee54bbf.png)
+
+## Halo Background Styles
+
+> Shader sources were adapted from [GLSL Sandbox](https://glslsandbox.com) ([GitHub](https://github.com/mrdoob/glsl-sandbox)).
 
 Craft a **Requesting Halo** with a Botania **Mystical Flower** to change its background shader. Each flower color unlocks a different style:
 
 | Mystical Flower | Style Name | Description |
-|---|---|---|
+| --- | --- | --- |
 | White | Clouds | Layered noise clouds |
 | Blue | Space | Volumetric star field |
 | Yellow | Falling Stars | 3D fractal fly-through |
@@ -34,11 +37,20 @@ Craft a **Requesting Halo** with a Botania **Mystical Flower** to change its bac
 | Pink | Wavy Fog | Gently rolling fog waves |
 | Orange | Wavy Pattern | Sine interference pattern |
 
-The legacy **petal**-based styles (Botania petals instead of flowers) are still available:
+Legacy **petal-based** styles are also available:
 
 | Petal | Style |
-|---|---|
+| --- | --- |
 | Light Blue petal | Classic |
 | Cyan petal | Mana |
 | Purple petal | Corporea |
 | Lime petal | Botania |
+
+## Known Issues
+
+- The rainbow glow used in the Requesting Halo and in the Quantization Device does not display the rays correctly.
+
+## Roadmap
+
+- Add a toggle to keep the Halo aligned with the player view angle.
+- Fix player spinning when turning around and unanchoring the Halo.

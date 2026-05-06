@@ -299,6 +299,7 @@ public final class HaloInterfaceBackground {
     Tesselator tessellator = Tesselator.getInstance();
     BufferBuilder buffer = tessellator.getBuilder();
     RawShaderProgram shader = draw.shader;
+    double angleStep = ModConfig.getHaloShaderAngleStep();
 
     RenderSystem.enableBlend();
     RenderSystem.defaultBlendFunc();
@@ -317,7 +318,7 @@ public final class HaloInterfaceBackground {
 
       buffer.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR_TEX);
       double visibleHalfWidth = draw.fullWidth + draw.fadeWidth;
-      for (double angle = -visibleHalfWidth; angle < visibleHalfWidth; angle += Math.PI / 360D) {
+      for (double angle = -visibleHalfWidth; angle < visibleHalfWidth; angle += angleStep) {
         float xp = (float) (Math.sin(angle) * draw.radius);
         float zp = (float) (Math.cos(angle) * draw.radius);
 
@@ -381,6 +382,7 @@ public final class HaloInterfaceBackground {
     Tesselator tessellator = Tesselator.getInstance();
     BufferBuilder buffer = tessellator.getBuilder();
     Matrix4f matrix = ms.getLast().getMatrix();
+    double angleStep = ModConfig.getHaloShaderAngleStep();
 
     OculusCompat.withoutGbufferOverride(() -> {
       RenderSystem.setShaderColor(r, g, b, 1F);
@@ -394,7 +396,7 @@ public final class HaloInterfaceBackground {
       try {
         buffer.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR_TEX);
         double visibleHalfWidth = fullWidth + fadeWidth;
-        for (double angle = -visibleHalfWidth; angle < visibleHalfWidth; angle += Math.PI / 360D) {
+        for (double angle = -visibleHalfWidth; angle < visibleHalfWidth; angle += angleStep) {
           float xp = (float) (Math.sin(angle) * radius);
           float zp = (float) (Math.cos(angle) * radius);
 
@@ -419,6 +421,9 @@ public final class HaloInterfaceBackground {
   }
 
   private static void logMissingShader(RenderType type) {
+    if (!ModConfig.isShaderDebugEnabled()) {
+      return;
+    }
     String key = String.valueOf(type);
     if (loggedMissingShaders.add(key)) {
       LOGGER.warn("[HaloShaderDebug] No ShaderInstance resolved for halo render type {}.", key);
@@ -426,6 +431,9 @@ public final class HaloInterfaceBackground {
   }
 
   private static void logDisabledShaderStyle(HaloInterfaceStyle style) {
+    if (!ModConfig.isShaderDebugEnabled()) {
+      return;
+    }
     String key = style.name();
     if (loggedDisabledStyles.add(key)) {
       LOGGER.info("[HaloShaderDebug] Halo shader style {} was requested but client halo shaders are disabled; falling back to CLASSIC.", key);
@@ -434,6 +442,9 @@ public final class HaloInterfaceBackground {
 
   private static void logShaderDraw(RenderType type, ShaderInstance shader, double radius, double width, double height,
       double fadeWidth, double worldRotRad, float alpha) {
+    if (!ModConfig.isShaderDebugEnabled()) {
+      return;
+    }
     long now = System.currentTimeMillis();
     if (now < nextShaderStatusLogAt) {
       return;
@@ -455,6 +466,9 @@ public final class HaloInterfaceBackground {
 
   private static void logRawShaderDraw(RawShaderProgram shader, double radius, double width, double height,
       double fadeWidth, double worldRotRad, float alpha) {
+    if (!ModConfig.isShaderDebugEnabled()) {
+      return;
+    }
     long now = System.currentTimeMillis();
     if (now < nextShaderStatusLogAt) {
       return;

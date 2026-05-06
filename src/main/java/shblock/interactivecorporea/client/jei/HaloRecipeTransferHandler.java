@@ -59,8 +59,6 @@ public class HaloRecipeTransferHandler implements IRecipeTransferHandler<DummyTr
       }
 
       container.shouldClose = true;
-    } else {
-      //TODO: display red overlay?
     }
     return null;
   }

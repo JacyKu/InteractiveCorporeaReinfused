@@ -11,6 +11,7 @@ import net.minecraftforge.event.entity.item.ItemTossEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import shblock.interactivecorporea.IC;
+import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.ModSounds;
 import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
@@ -67,7 +68,10 @@ public class QuantumInserterHandler {
       return stack;
     }
     if (!ItemRequestingHalo.canPlayerAccessNetwork(player, halo)) {
-      player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.haloOutOfRange, SoundSource.PLAYERS, 1F, 1F);
+      float volume = ModConfig.scaleSoundVolume(ModSounds.haloOutOfRange, 1F);
+      if (volume > 0F) {
+        player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.haloOutOfRange, SoundSource.PLAYERS, volume, 1F);
+      }
       return stack;
     }
 
@@ -102,7 +106,10 @@ public class QuantumInserterHandler {
   }
 
   public static void playReachEdge(ServerPlayer player) {
-    player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.haloReachEdge, SoundSource.PLAYERS, 1F, 1F);
+    float volume = ModConfig.scaleSoundVolume(ModSounds.haloReachEdge, 1F);
+    if (volume > 0F) {
+      player.level().playSound(null, player.getX(), player.getY(), player.getZ(), ModSounds.haloReachEdge, SoundSource.PLAYERS, volume, 1F);
+    }
   }
 
   private static TileItemQuantizationDevice getBoundDevice(ServerPlayer player, ItemStack halo) {

@@ -217,15 +217,6 @@ public class HaloCraftingInterface {
     return false;
   }
 
-//  public boolean tryPlaceShadowItem(ItemStack stack) {
-//    CraftingInterfaceSlot slot = getPointingSlot();
-//    if (slot == null) return false;
-//    boolean result = slot.setShadowStack(stack);
-//    if (result)
-//      updateRecipe();
-//    return result;
-//  }
-
   public boolean handleSlotInteraction(boolean isPut, @Nullable Vector3 clickWorldPos, @Nullable HaloPickedItem pickedItem) {
     if (mc.player == null || mc.level == null) return false;
     if (clickWorldPos == null) return false;
@@ -236,7 +227,7 @@ public class HaloCraftingInterface {
     ItemStack shadowStack = slot.getShadowStack();
     ItemStack realStack = slot.getRealStack();
 
-    if (isPut) { // put the item in player's hand into the slot (or replace the item in that slot)
+    if (isPut) {
       if (newStack.isEmpty()) {
         if (pickedItem == null) return false;
         ItemStack pickedStack = pickedItem.getStack();
@@ -246,25 +237,24 @@ public class HaloCraftingInterface {
         }
       }
 
-      if (realStack.isEmpty()) { // if the realStack was empty (put)
+      if (realStack.isEmpty()) {
         if (StackHelper.equalItemAndTag(newStack, shadowStack) || tryPlaceShadowItem(slot.getSlotIndex(), newStack)) {
           updateRecipe();
           ModPacketHandler.sendToServer(new CPacketChangeStackInHaloCraftingSlot(haloItemSlot, slot.getSlotIndex(), true, clickWorldPos));
           return true;
         }
       }
-      // if the realStack's item is the same as the newStack's and the realStack has not reached the stack limit (add)
       if (realStack.getCount() < realStack.getMaxStackSize() && StackHelper.equalItemAndTag(newStack, realStack)) {
         ModPacketHandler.sendToServer(new CPacketChangeStackInHaloCraftingSlot(haloItemSlot, slot.getSlotIndex(), true, clickWorldPos));
         return true;
-      } else { // the realStack does not match the newStack (replace)
+      } else {
         if (tryPlaceShadowItem(slot.getSlotIndex(), newStack)) {
           updateRecipe();
           ModPacketHandler.sendToServer(new CPacketChangeStackInHaloCraftingSlot(haloItemSlot, slot.getSlotIndex(), true, clickWorldPos));
           return true;
         }
       }
-    } else { // remove the item in the slot
+    } else {
       if (!realStack.isEmpty()) {
         ModPacketHandler.sendToServer(new CPacketChangeStackInHaloCraftingSlot(haloItemSlot, slot.getSlotIndex(), false, clickWorldPos));
         return true;
@@ -279,20 +269,6 @@ public class HaloCraftingInterface {
 
     return false;
   }
-
-//  /**
-//   * @return this only represents if the packet was successfully sent to the server, the action on server might still fail
-//   */
-//  public boolean sendChangeItemInSlotPacket(CISlotPointer halo, ItemStack haloStack, boolean isPut, Vector3 clickPosition) {
-//
-//    if (isPut && mc.player.getHeldItemMainhand().isEmpty()) return false;
-//    CraftingInterfaceSlot slot = getPointingSlot();
-//    if (slot == null) return false;
-//    if (haloStack.isEmpty()) return false;
-//    if (!isPut && ItemRequestingHalo.getStackInCraftingSlot(haloStack, slot.getSlotIndex()).isEmpty()) return false;
-//    ModPacketHandler.sendToServer(new PacketChangeStackInHaloCraftingSlot(halo, slot.getSlotIndex(), isPut, clickPosition));
-//    return true;
-//  }
 
   public void updateRecipe() {
     if (mc.level == null || mc.player == null) return;

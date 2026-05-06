@@ -8,6 +8,7 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import shblock.interactivecorporea.IC;
+import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import vazkii.botania.client.fx.SparkleParticleData;
@@ -52,13 +53,16 @@ public class HaloAttractServerHandler {
     boolean red = world.getRandom().nextBoolean();
     float r = red ? 1F : 0F;
     float b = red ? 0F : 1F;
-    world.sendParticles(
-        SparkleParticleData.sparkle(3F, r, 0, b, 10),
-        item.getX(),
-        item.getY() + .2,
-        item.getZ(),
-        1, .1, .1, .1, 1F
-    );
+    int particleCount = ModConfig.scaleParticleCount(1);
+    if (particleCount > 0) {
+      world.sendParticles(
+          SparkleParticleData.sparkle(3F, r, 0, b, 10),
+          item.getX(),
+          item.getY() + .2,
+          item.getZ(),
+          particleCount, .1, .1, .1, 1F
+      );
+    }
   }
 
   public static void addToAttractedItems(Player player, ItemEntity item) {
