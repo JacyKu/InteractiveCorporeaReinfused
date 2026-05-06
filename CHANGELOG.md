@@ -1,5 +1,12 @@
 # Changelog
 ---
+
+## 1.1.1-beta
+
+### Fixed
+- Game would crash because of the wrong Dynamic Lights version
+
+---
 ## 1.1.0-beta
 ### Added
 - Halo shaders.
