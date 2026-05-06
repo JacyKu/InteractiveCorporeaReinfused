@@ -57,10 +57,6 @@ public class SimpleShaderProgram implements ResourceManagerReloadListener {
   }
 
   private void load(ResourceManager resourceManager) throws IOException {
-//    if (vert != 0) glDeleteShader(vert);
-//    if (frag != 0) glDeleteShader(frag);
-//    if (program != 0) glDeleteProgram(program);
-
     if (hasVert) {
       vert = glCreateShader(GL_VERTEX_SHADER);
       glShaderSource(vert, readShaderSource(resourceManager, vertexLocation));

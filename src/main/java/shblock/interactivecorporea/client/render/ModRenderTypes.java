@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.resources.ResourceLocation;
 import shblock.interactivecorporea.IC;
 import vazkii.botania.mixin.client.RenderTypeAccessor;
 
@@ -20,6 +21,22 @@ public class ModRenderTypes extends RenderStateShard {
         false,
         RenderType.CompositeState.builder()
             .setShaderState(POSITION_COLOR_SHADER)
+            .setCullState(NO_CULL)
+            .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
+            .setWriteMaskState(COLOR_WRITE)
+            .createCompositeState(false)
+    );
+
+    public static final RenderType selectionBox = RenderTypeAccessor.create(
+        IC.MODID + "_selection_box",
+        DefaultVertexFormat.POSITION_COLOR_TEX,
+        VertexFormat.Mode.QUADS,
+        64,
+        false,
+        false,
+        RenderType.CompositeState.builder()
+            .setShaderState(POSITION_COLOR_TEX_SHADER)
+            .setTextureState(new TextureStateShard(new ResourceLocation(IC.MODID, "textures/ui/selection_box.png"), false, false))
             .setCullState(NO_CULL)
             .setTransparencyState(TRANSLUCENT_TRANSPARENCY)
             .setWriteMaskState(COLOR_WRITE)
@@ -70,7 +87,7 @@ public class ModRenderTypes extends RenderStateShard {
             .createCompositeState(false)
     );
 
-    // ── Custom halo-shader render types (POSITION_COLOR_TEX + custom fsh) ──
+    // Custom halo-shader render types (POSITION_COLOR_TEX + custom fsh)
 
     @Nullable public static ShaderInstance haloCloudShader;
 
@@ -275,6 +292,23 @@ public class ModRenderTypes extends RenderStateShard {
             .setWriteMaskState(COLOR_WRITE)
             .createCompositeState(false)
     );
+
+    @Nullable
+    public static ShaderInstance getHaloShader(RenderType type) {
+        if (type == haloCloud) return haloCloudShader;
+        if (type == haloSpace) return haloSpaceShader;
+        if (type == haloFallingStars) return haloFallingStarsShader;
+        if (type == haloLavaLamp) return haloLavaLampShader;
+        if (type == haloDepthMap) return haloDepthMapShader;
+        if (type == haloFoggyCloud) return haloFoggyCloudShader;
+        if (type == haloGlassLiquid) return haloGlassLiquidShader;
+        if (type == haloMetalCloud) return haloMetalCloudShader;
+        if (type == haloSmokish) return haloSmokishShader;
+        if (type == haloSplit) return haloSplitShader;
+        if (type == haloWavyFog) return haloWavyFogShader;
+        if (type == haloWavyPattern) return haloWavyPatternShader;
+        return null;
+    }
 
     private ModRenderTypes() {
         super("interactive_corporea_render_types", () -> {}, () -> {});

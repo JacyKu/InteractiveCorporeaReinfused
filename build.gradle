@@ -120,6 +120,8 @@ dependencies {
 
     modRuntimeOnly("maven.modrinth:oculus:${oculus_version}")
     modRuntimeOnly("maven.modrinth:embeddium:${embeddium_version}")
+    modCompileOnly("maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}")
+    modRuntimeOnly("maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}")
 
 }
 

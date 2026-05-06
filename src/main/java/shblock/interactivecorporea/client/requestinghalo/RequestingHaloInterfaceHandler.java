@@ -20,13 +20,13 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.ModSounds;
+import shblock.interactivecorporea.client.render.DeferredWorldRenderQueue;
 import shblock.interactivecorporea.client.renderer.tile.QuantizationDeviceWandHUD;
 import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
 import shblock.interactivecorporea.common.network.CPacketRequestingHaloState;
 import shblock.interactivecorporea.common.network.CPacketRequestingHaloViewUpdate;
 import shblock.interactivecorporea.common.network.ModPacketHandler;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
-import shblock.interactivecorporea.common.tile.ModTiles;
 import shblock.interactivecorporea.common.tile.TileItemQuantizationDevice;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.CurioSlotPointer;
@@ -47,7 +47,7 @@ import java.util.function.Supplier;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = IC.MODID)//TODO: advancements?
+@Mod.EventBusSubscriber(value = Dist.CLIENT, modid = IC.MODID)
 public class RequestingHaloInterfaceHandler {
   private static final Minecraft mc = Minecraft.getInstance();
   private static RequestingHaloInterface haloInterface;
@@ -175,14 +175,7 @@ public class RequestingHaloInterfaceHandler {
    */
   public static boolean slotStillValid() {
     ItemStack currentStack = getInterface().getSlot().getStack(mc.player);
-//    if (ItemStack.areItemStacksEqual(currentStack, getInterface().getHaloItem())) {
-//      if (currentStack != getInterface().getHaloItem()) {
-//        getInterface().setHaloItem(currentStack);
-//      }
-//      return true;
-//    }
-//    return false;
-    return ItemStack.isSameItemSameTags(currentStack, getInterface().getHaloItem()); //TODO: better halo item validation
+    return ItemStack.isSameItemSameTags(currentStack, getInterface().getHaloItem());
   }
 
   public static void handleUpdatePacket(List<ItemStack> itemList) {
@@ -245,6 +238,10 @@ public class RequestingHaloInterfaceHandler {
 
   @SubscribeEvent
   public static void onWorldRender(RenderLevelStageEvent event) {
+    if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+      DeferredWorldRenderQueue.flush();
+      return;
+    }
     if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
       return;
     }

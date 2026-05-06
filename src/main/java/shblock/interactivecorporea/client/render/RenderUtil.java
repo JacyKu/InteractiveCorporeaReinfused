@@ -256,8 +256,6 @@ public class RenderUtil {
           (float) (starPerlin.perlin(noisePos, 10, z) * Math.PI * 2),
           (float) (starPerlin.perlin(noisePos, 20, z) * Math.PI * 2),
           false));
-//      if (starPerlin.perlin(noisePos, 0, perlinZ) * Math.PI == starPerlin.perlin(noisePos, 100, perlinZ) * Math.PI)
-//        System.out.println(starPerlin.perlin(noisePos, 100, perlinZ) * Math.PI);
       float f3 = (float) (starPerlin.perlin(noisePos, 30, z) * 20F + 5F + f2 * 10F);
       float f4 = (float) (starPerlin.perlin(noisePos, 40, z) * 2F + 1F + f2 * 2F);
       float r = ((color & 0xFF0000) >> 16) / 255F;

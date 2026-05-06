@@ -1,35 +1,98 @@
 package shblock.interactivecorporea.client.requestinghalo;
 
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.mojang.blaze3d.matrix.MatrixStack;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.ShaderInstance;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.math.vector.Matrix4f;
 import net.minecraft.util.math.vector.Vector3f;
+import shblock.interactivecorporea.IC;
 import shblock.interactivecorporea.ModConfig;
+import shblock.interactivecorporea.client.render.DeferredWorldRenderQueue;
 import shblock.interactivecorporea.client.render.ModRenderTypes;
 import shblock.interactivecorporea.client.render.OculusCompat;
 import shblock.interactivecorporea.client.render.RenderUtil;
+import shblock.interactivecorporea.client.render.shader.RawShaderProgram;
 import shblock.interactivecorporea.client.util.RenderTick;
 import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
 
 public final class HaloInterfaceBackground {
+  private static final Logger LOGGER = LogManager.getLogger();
+  private static final long SHADER_STATUS_LOG_INTERVAL_MS = 2000L;
   private static final Minecraft mc = Minecraft.getInstance();
   private static final double FADE_WIDTH = .3D;
   private static final double MAX_WIDTH = Math.PI * .25D;
+  private static final double SHADER_OVERFLOW = .12D;
+  private static final double SHADER_UV_U_SCALE = 3.0D;
+  private static final double SHADER_LAYER_RADIUS_OFFSET = .15D;
+  private static final float  SHADER_LAYER_ALPHA          = .62F;
+  private static final double OVERLAY_PHASE_SPEED         = .011D;
+  private static final double OVERLAY_BLOOM_PHASE_OFFSET  = .7D;
+  private static final float  OVERLAY_MIST_TINT           = .72F;
+  private static final float  OVERLAY_MIST_NOISE          = .035F;
+  private static final float  OVERLAY_BLOOM_TINT          = .82F;
+  private static final float  OVERLAY_BLOOM_NOISE         = .045F;
+  private static final float  OVERLAY_FRONT_TINT          = .86F;
+  private static final float  OVERLAY_FRONT_NOISE         = .055F;
+  private static final Set<String> loggedMissingShaders = new HashSet<>();
+  private static final Set<String> loggedDisabledStyles = new HashSet<>();
+  private static final Map<RenderType, RawShaderProgram> RAW_HALO_SHADERS = createRawHaloShaders();
+  private static long nextShaderStatusLogAt;
 
   private HaloInterfaceBackground() {
+  }
+
+  private static Map<RenderType, RawShaderProgram> createRawHaloShaders() {
+    Map<RenderType, RawShaderProgram> shaders = new IdentityHashMap<>();
+    registerRawHaloShader(shaders, ModRenderTypes.haloCloud, "halo_clouds");
+    registerRawHaloShader(shaders, ModRenderTypes.haloSpace, "halo_space");
+    registerRawHaloShader(shaders, ModRenderTypes.haloFallingStars, "halo_fallingstars");
+    registerRawHaloShader(shaders, ModRenderTypes.haloLavaLamp, "halo_lavalamp");
+    registerRawHaloShader(shaders, ModRenderTypes.haloDepthMap, "halo_depthmap");
+    registerRawHaloShader(shaders, ModRenderTypes.haloFoggyCloud, "halo_foggyclouds");
+    registerRawHaloShader(shaders, ModRenderTypes.haloGlassLiquid, "halo_glassliquid");
+    registerRawHaloShader(shaders, ModRenderTypes.haloMetalCloud, "halo_metalclouds");
+    registerRawHaloShader(shaders, ModRenderTypes.haloSmokish, "halo_smokish");
+    registerRawHaloShader(shaders, ModRenderTypes.haloSplit, "halo_split");
+    registerRawHaloShader(shaders, ModRenderTypes.haloWavyFog, "halo_wavyfog");
+    registerRawHaloShader(shaders, ModRenderTypes.haloWavyPattern, "halo_wavypattern");
+    return shaders;
+  }
+
+  private static void registerRawHaloShader(Map<RenderType, RawShaderProgram> shaders, RenderType type, String shaderName) {
+    shaders.put(type, new RawShaderProgram(
+        ResourceLocation.fromNamespaceAndPath(IC.MODID, "shaders/core/halo_raw.vsh"),
+        ResourceLocation.fromNamespaceAndPath(IC.MODID, "shaders/core/" + shaderName + ".fsh"),
+        null,
+        null
+    ));
   }
 
   public static void render(MatrixStack ms, double radius, double height, double progress,
       HaloInterfaceStyle style, float[] haloTint, double worldRotDeg) {
     if (!ModConfig.CLIENT.enableHaloShaders.get() && style.isShaderStyle()) {
+      logDisabledShaderStyle(style);
       style = HaloInterfaceStyle.CLASSIC;
     }
-    HaloInterfaceStyle renderStyle = style;
-    OculusCompat.withoutGbufferOverride(() -> renderInternal(ms, radius, height, progress, renderStyle, haloTint, worldRotDeg));
+    renderInternal(ms, radius, height, progress, style, haloTint, worldRotDeg);
   }
 
   private static void renderInternal(MatrixStack ms, double radius, double height, double progress,
@@ -99,201 +162,93 @@ public final class HaloInterfaceBackground {
     }
   }
 
-  // ── Shader-based backgrounds
+  private static void renderShaderStyle(MatrixStack ms, double radius, double height, double progress,
+      RenderType type, float[] tint, double worldRotRad, HaloInterfaceStyle style, float[] frontPanelBase) {
+    double sw = shaderWidth(progress);
+    double bodyH = bodyHeight(height, progress);
+
+    renderShaderLayer(ms, type, radius + SHADER_LAYER_RADIUS_OFFSET, Math.max(0D, sw - FADE_WIDTH), bodyH, Math.min(FADE_WIDTH, sw),
+      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * SHADER_LAYER_ALPHA));
+
+    double phase = RenderTick.total * OVERLAY_PHASE_SPEED;
+    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(style, phase), tint, OVERLAY_MIST_TINT, OVERLAY_MIST_NOISE);
+    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(style, phase + OVERLAY_BLOOM_PHASE_OFFSET), tint, OVERLAY_BLOOM_TINT, OVERLAY_BLOOM_NOISE);
+    float[] frontPanel = HaloStylePalette.tint(frontPanelBase, tint, OVERLAY_FRONT_TINT, OVERLAY_FRONT_NOISE);
+    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+  }
 
   private static void renderClouds(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.CLOUDS, phase), tint, .72F, .035F);
-    float[] bloom = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.CLOUDS, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.04F, .24F, .48F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.CLOUDS, new float[] {.04F, .24F, .48F});
   }
 
   private static void renderSpace(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.SPACE, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.SPACE, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.02F, .06F, .35F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.SPACE, new float[] {.02F, .06F, .35F});
   }
 
   private static void renderFallingStars(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.FALLINGSTARS, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.FALLINGSTARS, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.35F, .28F, .02F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.FALLINGSTARS, new float[] {.35F, .28F, .02F});
   }
 
   private static void renderLavaLamp(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.LAVALAMP, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.LAVALAMP, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.35F, .06F, .02F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.LAVALAMP, new float[] {.35F, .06F, .02F});
   }
 
   private static void renderDepthMap(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.DEPTHMAP, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.DEPTHMAP, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.18F, .18F, .18F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.DEPTHMAP, new float[] {.18F, .18F, .18F});
   }
 
   private static void renderFoggyCloud(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.FOGGYCLOUDS, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.FOGGYCLOUDS, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.03F, .22F, .42F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.FOGGYCLOUDS, new float[] {.03F, .22F, .42F});
   }
 
   private static void renderGlassLiquid(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.GLASSLIQUID, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.GLASSLIQUID, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.02F, .28F, .38F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.GLASSLIQUID, new float[] {.02F, .28F, .38F});
   }
 
   private static void renderMetalCloud(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.METALCLOUDS, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.METALCLOUDS, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.20F, .20F, .22F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.METALCLOUDS, new float[] {.20F, .20F, .22F});
   }
 
   private static void renderSmokish(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.SMOKISH, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.SMOKISH, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.18F, .04F, .26F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.SMOKISH, new float[] {.18F, .04F, .26F});
   }
 
   private static void renderSplit(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.SPLIT, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.SPLIT, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.04F, .22F, .06F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.SPLIT, new float[] {.04F, .22F, .06F});
   }
 
   private static void renderWavyFog(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.WAVYFOG, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.WAVYFOG, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.30F, .06F, .16F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.WAVYFOG, new float[] {.30F, .06F, .16F});
   }
 
   private static void renderWavyPattern(MatrixStack ms, double radius, double height, double progress,
       RenderType type, float[] tint, double worldRotRad) {
-    double width = visibleWidth(progress);
-    double bodyH = bodyHeight(height, progress);
-
-    renderShaderLayer(ms, type, radius + .15D, width * 1.42D, bodyH * 1.34D, FADE_WIDTH * 2.35D,
-      worldRotRad, tint[0], tint[1], tint[2], (float) (progress * .62F));
-
-    double phase = RenderTick.total * .011D;
-    float[] mist       = HaloStylePalette.tint(HaloStylePalette.primary(HaloInterfaceStyle.WAVYPATTERN, phase), tint, .72F, .035F);
-    float[] bloom      = HaloStylePalette.tint(HaloStylePalette.accent(HaloInterfaceStyle.WAVYPATTERN, phase + .7D), tint, .82F, .045F);
-    float[] frontPanel = HaloStylePalette.tint(new float[] {.32F, .18F, .02F}, tint, .86F, .055F);
-
-    renderSharedOverlayPanels(ms, radius, height, progress, mist, bloom, frontPanel);
+    renderShaderStyle(ms, radius, height, progress, type, tint, worldRotRad,
+        HaloInterfaceStyle.WAVYPATTERN, new float[] {.32F, .18F, .02F});
   }
 
-  /** The three overlay panels used by every shader-based background (same sizing/parameters). */
   private static void renderSharedOverlayPanels(MatrixStack ms, double radius, double height, double progress,
       float[] mist, float[] bloom, float[] frontPanel) {
     double width = visibleWidth(progress);
@@ -302,16 +257,220 @@ public final class HaloInterfaceBackground {
       .09D, 2.1D, .022D, .2D, mist[0], mist[1], mist[2], (float) (progress * .1F));
     renderShiftedWavyLayer(ms, radius + .033D, width * 1.48D, bodyH * 1.36D, FADE_WIDTH * 1.85D,
       .13D, 2.75D, .031D, 1.5D, shimmerOffset(.018D, .95D), bloom[0], bloom[1], bloom[2], (float) (progress * .065F));
-    RenderUtil.renderPartialHalo(ms, radius + .012D, width - FADE_WIDTH, bodyH, FADE_WIDTH,
-      frontPanel[0], frontPanel[1], frontPanel[2], (float) (progress * .28F));
+    renderWavyLayer(ms, radius + .012D, width, bodyH, FADE_WIDTH,
+      .055D, 1.6D, .016D, .9D, frontPanel[0], frontPanel[1], frontPanel[2], (float) (progress * .28F));
   }
 
   private static void renderShaderLayer(MatrixStack ms, RenderType type, double radius, double width, double height, double fadeWidth,
       double worldRotRad, float r, float g, float b, float alpha) {
-    RenderSystem.setShaderColor(r, g, b, 1F);
-    RenderUtil.renderPartialHaloShader(ms, type, radius, width - fadeWidth, height, fadeWidth,
-        worldRotRad, 1F, 1F, 1F, alpha);
-    RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+    double fullWidth = width;
+    if (fullWidth <= 0D) {
+      return;
+    }
+
+    RawShaderProgram rawShader = RAW_HALO_SHADERS.get(type);
+    if (rawShader != null && rawShader.isLoaded()) {
+      renderRawShaderLayer(ms, rawShader, radius, fullWidth, height, fadeWidth, worldRotRad, r, g, b, alpha);
+      return;
+    }
+
+    ShaderInstance shader = ModRenderTypes.getHaloShader(type);
+    if (shader == null) {
+      logMissingShader(type);
+      return;
+    }
+
+    renderMinecraftShaderLayer(ms, type, shader, radius, fullWidth, height, fadeWidth, worldRotRad, r, g, b, alpha);
+  }
+
+  private static void renderRawShaderLayer(MatrixStack ms, RawShaderProgram shader, double radius, double fullWidth, double height,
+      double fadeWidth, double worldRotRad, float r, float g, float b, float alpha) {
+    org.joml.Matrix4f poseSnapshot = new org.joml.Matrix4f(ms.getLast().getMatrix());
+    org.joml.Matrix4f modelView = new org.joml.Matrix4f(RenderSystem.getModelViewMatrix());
+    org.joml.Matrix4f projection = new org.joml.Matrix4f(RenderSystem.getProjectionMatrix());
+    DeferredRawShaderDraw draw = new DeferredRawShaderDraw(
+        shader, poseSnapshot, modelView, projection,
+        radius, fullWidth, height, fadeWidth, worldRotRad, r, g, b, alpha
+    );
+    DeferredWorldRenderQueue.enqueue(() -> executeRawShaderDraw(draw));
+  }
+
+  private static void executeRawShaderDraw(DeferredRawShaderDraw draw) {
+    Tesselator tessellator = Tesselator.getInstance();
+    BufferBuilder buffer = tessellator.getBuilder();
+    RawShaderProgram shader = draw.shader;
+
+    RenderSystem.enableBlend();
+    RenderSystem.defaultBlendFunc();
+    RenderSystem.disableCull();
+    RenderSystem.depthMask(false);
+
+    try {
+      shader.use();
+      shader.setUniformMatrix4f("ModelViewMat", draw.modelView);
+      shader.setUniformMatrix4f("ProjMat", draw.projection);
+      shader.setUniform1f("GameTime", (float) (RenderTick.total / 24000D));
+      shader.setUniform4f("ColorModulator", draw.r, draw.g, draw.b, 1F);
+      logRawShaderDraw(shader, draw.radius, draw.fullWidth, draw.height, draw.fadeWidth, draw.worldRotRad, draw.alpha);
+
+      org.joml.Matrix4f matrix = draw.pose;
+
+      buffer.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR_TEX);
+      double visibleHalfWidth = draw.fullWidth + draw.fadeWidth;
+      for (double angle = -visibleHalfWidth; angle < visibleHalfWidth; angle += Math.PI / 360D) {
+        float xp = (float) (Math.sin(angle) * draw.radius);
+        float zp = (float) (Math.cos(angle) * draw.radius);
+
+        double minDistToEdge = Math.min(Math.abs(visibleHalfWidth - angle), Math.abs(-visibleHalfWidth - angle));
+        float currentAlpha = draw.alpha;
+        if (minDistToEdge < draw.fadeWidth) {
+          currentAlpha *= (float) Math.sin((minDistToEdge / draw.fadeWidth) * (Math.PI / 2));
+        }
+
+        float u = (float) ((angle - draw.worldRotRad) / (2.0 * Math.PI) * SHADER_UV_U_SCALE);
+        buffer.vertex(matrix, xp, (float) (-draw.height), zp).color(1F, 1F, 1F, currentAlpha).uv(u, 0F).endVertex();
+        buffer.vertex(matrix, xp, (float) draw.height, zp).color(1F, 1F, 1F, currentAlpha).uv(u, 1F).endVertex();
+      }
+      BufferUploader.draw(buffer.end());
+    } finally {
+      shader.release();
+      RenderSystem.depthMask(true);
+      RenderSystem.enableCull();
+      RenderSystem.disableBlend();
+    }
+  }
+
+  private static final class DeferredRawShaderDraw {
+    final RawShaderProgram shader;
+    final org.joml.Matrix4f pose;
+    final org.joml.Matrix4f modelView;
+    final org.joml.Matrix4f projection;
+    final double radius;
+    final double fullWidth;
+    final double height;
+    final double fadeWidth;
+    final double worldRotRad;
+    final float r;
+    final float g;
+    final float b;
+    final float alpha;
+
+    DeferredRawShaderDraw(RawShaderProgram shader, org.joml.Matrix4f pose,
+        org.joml.Matrix4f modelView, org.joml.Matrix4f projection,
+        double radius, double fullWidth, double height, double fadeWidth, double worldRotRad,
+        float r, float g, float b, float alpha) {
+      this.shader = shader;
+      this.pose = pose;
+      this.modelView = modelView;
+      this.projection = projection;
+      this.radius = radius;
+      this.fullWidth = fullWidth;
+      this.height = height;
+      this.fadeWidth = fadeWidth;
+      this.worldRotRad = worldRotRad;
+      this.r = r;
+      this.g = g;
+      this.b = b;
+      this.alpha = alpha;
+    }
+  }
+
+  private static void renderMinecraftShaderLayer(MatrixStack ms, RenderType type, ShaderInstance shader, double radius, double fullWidth,
+      double height, double fadeWidth, double worldRotRad, float r, float g, float b, float alpha) {
+
+    Tesselator tessellator = Tesselator.getInstance();
+    BufferBuilder buffer = tessellator.getBuilder();
+    Matrix4f matrix = ms.getLast().getMatrix();
+
+    OculusCompat.withoutGbufferOverride(() -> {
+      RenderSystem.setShaderColor(r, g, b, 1F);
+      RenderSystem.enableBlend();
+      RenderSystem.defaultBlendFunc();
+      RenderSystem.disableCull();
+      RenderSystem.depthMask(false);
+      RenderSystem.setShader(() -> shader);
+      logShaderDraw(type, shader, radius, fullWidth, height, fadeWidth, worldRotRad, alpha);
+
+      try {
+        buffer.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR_TEX);
+        double visibleHalfWidth = fullWidth + fadeWidth;
+        for (double angle = -visibleHalfWidth; angle < visibleHalfWidth; angle += Math.PI / 360D) {
+          float xp = (float) (Math.sin(angle) * radius);
+          float zp = (float) (Math.cos(angle) * radius);
+
+          double minDistToEdge = Math.min(Math.abs(visibleHalfWidth - angle), Math.abs(-visibleHalfWidth - angle));
+          float currentAlpha = alpha;
+          if (minDistToEdge < fadeWidth) {
+            currentAlpha *= (float) Math.sin((minDistToEdge / fadeWidth) * (Math.PI / 2));
+          }
+
+          float u = (float) ((angle - worldRotRad) / (2.0 * Math.PI) * SHADER_UV_U_SCALE);
+          buffer.vertex(matrix, xp, (float) (-height), zp).color(1F, 1F, 1F, currentAlpha).uv(u, 0F).endVertex();
+          buffer.vertex(matrix, xp, (float) height, zp).color(1F, 1F, 1F, currentAlpha).uv(u, 1F).endVertex();
+        }
+        tessellator.end();
+      } finally {
+        RenderSystem.depthMask(true);
+        RenderSystem.enableCull();
+        RenderSystem.disableBlend();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+      }
+    });
+  }
+
+  private static void logMissingShader(RenderType type) {
+    String key = String.valueOf(type);
+    if (loggedMissingShaders.add(key)) {
+      LOGGER.warn("[HaloShaderDebug] No ShaderInstance resolved for halo render type {}.", key);
+    }
+  }
+
+  private static void logDisabledShaderStyle(HaloInterfaceStyle style) {
+    String key = style.name();
+    if (loggedDisabledStyles.add(key)) {
+      LOGGER.info("[HaloShaderDebug] Halo shader style {} was requested but client halo shaders are disabled; falling back to CLASSIC.", key);
+    }
+  }
+
+  private static void logShaderDraw(RenderType type, ShaderInstance shader, double radius, double width, double height,
+      double fadeWidth, double worldRotRad, float alpha) {
+    long now = System.currentTimeMillis();
+    if (now < nextShaderStatusLogAt) {
+      return;
+    }
+    nextShaderStatusLogAt = now + SHADER_STATUS_LOG_INTERVAL_MS;
+    LOGGER.info(
+        "[HaloShaderDebug] Drawing halo shader layer. type={}, shaderClass={}, radius={}, width={}, height={}, fadeWidth={}, worldRotRad={}, alpha={}, renderTick={}",
+        type,
+        shader.getClass().getName(),
+        String.format("%.3f", radius),
+        String.format("%.3f", width),
+        String.format("%.3f", height),
+        String.format("%.3f", fadeWidth),
+        String.format("%.3f", worldRotRad),
+        String.format("%.3f", alpha),
+        String.format("%.3f", RenderTick.total)
+    );
+  }
+
+  private static void logRawShaderDraw(RawShaderProgram shader, double radius, double width, double height,
+      double fadeWidth, double worldRotRad, float alpha) {
+    long now = System.currentTimeMillis();
+    if (now < nextShaderStatusLogAt) {
+      return;
+    }
+    nextShaderStatusLogAt = now + SHADER_STATUS_LOG_INTERVAL_MS;
+    LOGGER.info(
+        "[HaloShaderDebug] Drawing raw halo shader layer. shaderClass={}, radius={}, width={}, height={}, fadeWidth={}, worldRotRad={}, alpha={}, renderTick={}",
+        shader.getClass().getName(),
+        String.format("%.3f", radius),
+        String.format("%.3f", width),
+        String.format("%.3f", height),
+        String.format("%.3f", fadeWidth),
+        String.format("%.3f", worldRotRad),
+        String.format("%.3f", alpha),
+        String.format("%.3f", RenderTick.total)
+    );
   }
 
   private static void renderClassic(MatrixStack ms, double radius, double height, double progress) {
@@ -369,6 +528,10 @@ public final class HaloInterfaceBackground {
 
   private static double visibleWidth(double progress) {
     return progress * MAX_WIDTH;
+  }
+
+  private static double shaderWidth(double progress) {
+    return visibleWidth(progress) + SHADER_OVERFLOW * progress;
   }
 
   private static double bodyHeight(double height, double progress) {

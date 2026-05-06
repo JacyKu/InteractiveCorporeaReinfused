@@ -152,7 +152,7 @@ public class MathUtil {
     return ray.org.add(ray.dir.multiply(d));
   }
 
-  public static double pointToLineDistance(Ray3 line, Vector3 point) { //TODO: maybe find a better solution?
+  public static double pointToLineDistance(Ray3 line, Vector3 point) {
     Vector3 orgLine = line.dir.subtract(line.org);
     Vector3 proj = point.project(orgLine);
     return proj.subtract(orgLine).mag();

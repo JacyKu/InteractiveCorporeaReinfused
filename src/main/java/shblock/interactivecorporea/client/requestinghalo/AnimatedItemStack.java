@@ -18,8 +18,11 @@ import net.minecraft.network.chat.Component;
 import shblock.interactivecorporea.client.render.RenderUtil;
 import shblock.interactivecorporea.client.util.KeyboardHelper;
 import shblock.interactivecorporea.client.util.RenderTick;
-import shblock.interactivecorporea.common.util.*;
-import vazkii.botania.client.core.handler.ClientTickHandler;
+import shblock.interactivecorporea.common.util.MathUtil;
+import shblock.interactivecorporea.common.util.Perlin;
+import shblock.interactivecorporea.common.util.TextHelper;
+import shblock.interactivecorporea.common.util.Vec2d;
+import shblock.interactivecorporea.common.util.Vec2i;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -228,27 +231,14 @@ public class AnimatedItemStack {
     return removed;
   }
 
-//  public boolean shouldDisplay() {
-//    return shouldDisplay;
-//  }
-
   public void setPos(int x, int y) {
     posi.set(x, y);
     pos.set(x, y);
   }
 
   public void moveTo(int x, int y) {
-//    animationMove = new AnimationMove(animationLength, posi);
     posi.set(x, y);
   }
-
-//  public Vec2i getPrevPosi() {
-//    return animationMove == null ? posi : animationMove.getPrev();
-//  }
-//
-//  public Vec2i getPosi() {
-//    return posi;
-//  }
 
   public Vec2d getPos() {
     return pos;

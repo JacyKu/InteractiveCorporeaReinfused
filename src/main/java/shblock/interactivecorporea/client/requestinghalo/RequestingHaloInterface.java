@@ -23,7 +23,9 @@ import net.minecraft.util.math.vector.Quaternion;
 import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.math.vector.Vector3f;
 import net.minecraftforge.client.settings.KeyConflictContext;
+import net.minecraftforge.fml.ModList;
 import shblock.interactivecorporea.IC;
+import shblock.interactivecorporea.client.render.DynamicLightsCompat;
 import shblock.interactivecorporea.ModConfig;
 import shblock.interactivecorporea.ModSounds;
 import shblock.interactivecorporea.client.requestinghalo.crafting.CraftingInterfaceSlot;
@@ -83,6 +85,10 @@ public class RequestingHaloInterface {
   private boolean isNormalClose = false;
   private final Random magicParticleRandom = new Random();
 
+  public double getOpenCloseProgress() {
+    return openCloseProgress;
+  }
+
   private int tick = 0;
 
   private static final double INITIAL_ROTATION = 0;
@@ -102,12 +108,8 @@ public class RequestingHaloInterface {
   private final AnimatedCorporeaItemList itemList;
   private final AnimatedItemSelectionBox selectionBox = new AnimatedItemSelectionBox(() -> playSound(ModSounds.haloSelect, .25F, 1F));
   private HaloPickedItem pickedItem = null;
-  // if the picked item should fade away when the player looks up
   private boolean shouldPickedItemFadeWhenLookUp = false;
-  // when unselect the picked item or picking another one, the old one will be put in this list to display the fading animation
   private final List<HaloPickedItem> fadingPickedItems = new ArrayList<>();
-
-  // these variables are just here to avoid multiple unnecessary calculations of them in one frame
   private double itemSpacing;
   private double itemRotSpacing;
   private double itemZOffset;
@@ -156,18 +158,6 @@ public class RequestingHaloInterface {
       close();
       return false;
     }
-
-//    RenderTick.pt = (float) pt;
-//    try {
-//      Method method = ClientTickHandler.class.getDeclaredMethod("calcDelta");
-//      method.setAccessible(true);
-//      method.invoke(ClientTickHandler.class);
-//      method.setAccessible(false);
-//    } catch (InvocationTargetException | NoSuchMethodException | IllegalAccessException e) {
-//      e.printStackTrace();
-//    }
-    //TODO: fix delta calculation
-//    System.out.println(RenderTick.delta);
 
     handleRotation();
 
@@ -427,16 +417,13 @@ public class RequestingHaloInterface {
     }
   }
 
-  private boolean lastLimitRotation = false;
   private void limitPlayerRotation() {
     if (isOpenClose()) return;
     if (itemList.getAnimatedList().size() == 0) {
-      lastLimitRotation = false;
       return;
     }
 
     if (Math.abs(Math.toRadians(mc.player.getXRot())) > Math.atan(height / radius)) {
-      lastLimitRotation = false;
       return;
     }
 
@@ -445,15 +432,12 @@ public class RequestingHaloInterface {
     double minSpd = .1;
     double degreeItemRotSpacing = Math.toDegrees(itemRotSpacing);
 
-    boolean limited = false;
-
     double halfListWidth = Math.toDegrees(getItemListDisplayWidth()) / 2.0;
     double start = -(halfListWidth + degreeItemRotSpacing / 2 + excessSpacing);
     double distToStart = relativeRotation - start;
     if (distToStart < 0) {
       mc.player.setYRot((float) (mc.player.getYRot() - (distToStart * correctionSpd - minSpd) * RenderTick.delta));
       spawnParticleLineOnHalo(start);
-      limited = true;
     }
 
     double end = halfListWidth + degreeItemRotSpacing / 2 + excessSpacing;
@@ -461,14 +445,7 @@ public class RequestingHaloInterface {
     if (distToEnd > 0) {
       mc.player.setYRot((float) (mc.player.getYRot() - (distToEnd * correctionSpd + minSpd) * RenderTick.delta));
       spawnParticleLineOnHalo(end);
-      limited = true;
     }
-
-    if (limited && !lastLimitRotation) {
-//      playSound(ModSounds.haloReachEdge, 1F); //TODO: add this back when finds a better sound effect
-    }
-
-    lastLimitRotation = limited;
   }
 
   private float particleSpawnTimer = 0F;
@@ -507,7 +484,7 @@ public class RequestingHaloInterface {
     }
 
     Vector3d eyePos = new Vector3d(getHaloCenter());
-  float[] tint = ItemRequestingHalo.getHaloTintColor(haloItem);
+    float[] tint = ItemRequestingHalo.getHaloTintColor(haloItem);
     double panelWidth = progress * (Math.PI * .25D);
     boolean openingNow = opening && !closing;
     for (int index = 0; index < spawnCount; index++) {
@@ -517,7 +494,7 @@ public class RequestingHaloInterface {
       Vector3d pos = new Vector3d(particleRadius, vertical, 0D)
           .rotateYaw((float) Math.toRadians(-rotationOffset - 90D - relativeRotation + Math.toDegrees(relativeAngle)))
           .add(eyePos);
-        float[] color = HaloStylePalette.tint(HaloStylePalette.particle(style, RenderTick.total * .012D + magicParticleRandom.nextDouble()), tint, .86F, .1F);
+      float[] color = HaloStylePalette.tint(HaloStylePalette.particle(style, RenderTick.total * .012D + magicParticleRandom.nextDouble()), tint, .86F, .1F);
       float size = .68F + magicParticleRandom.nextFloat() * (style == HaloInterfaceStyle.BOTANIA ? .62F : .44F);
       double outwardX = pos.x - eyePos.x;
       double outwardZ = pos.z - eyePos.z;
@@ -551,10 +528,16 @@ public class RequestingHaloInterface {
     anchored = !anchored;
     if (anchored) {
       anchoredWorldPos = new Vector3d(mc.player.getEyePosition(1.0f));
+      if (ModList.get().isLoaded("sodiumdynamiclights")) {
+        DynamicLightsCompat.activateAnchorLight(anchoredWorldPos.x, anchoredWorldPos.y, anchoredWorldPos.z);
+      }
     } else {
       anchoredWorldPos = null;
       relativeRotation = mc.player.getYRot() - rotationOffset;
       prevPlayerRot = mc.player.getYRot();
+      if (ModList.get().isLoaded("sodiumdynamiclights")) {
+        DynamicLightsCompat.deactivateAnchorLight();
+      }
     }
     playSound(ModSounds.haloSelect, .5F, anchored ? 0.8F : 1.2F);
   }
@@ -669,6 +652,9 @@ public class RequestingHaloInterface {
     if (!isNormalClose) {
       RequestingHaloInterfaceHandler.resetKeyboardListener();
       playSound(ModSounds.haloClose, 1F);
+    }
+    if (anchored && ModList.get().isLoaded("sodiumdynamiclights")) {
+      DynamicLightsCompat.deactivateAnchorLight();
     }
     itemList.removeAll();
   }
@@ -895,15 +881,8 @@ public class RequestingHaloInterface {
     if (mc.screen == null) {
     if (isModuleInstalled(HaloModule.SEARCH)) {
       if (KEY_SEARCH.consumeClick()) {
-//        if (KeyboardHelper.hasShiftDown()) {
-//          if (craftingInterface != null) {
-//            craftingInterface.tryOpenJei();
-//            return;
-//          }
-//        } else {
           searchBar.setSearching(!searchBar.isSearching());
           return;
-//        }
       }
     }
     if (KEY_REQUEST_UPDATE.consumeClick()) {
