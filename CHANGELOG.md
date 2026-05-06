@@ -1,6 +1,6 @@
 # Changelog
 ---
-## 1.1.0
+## 1.1.0-beta
 ### Added
 - Halo shaders.
 - Inserter module to send items back into storage.
