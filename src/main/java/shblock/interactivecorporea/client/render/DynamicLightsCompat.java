@@ -1,7 +1,7 @@
 package shblock.interactivecorporea.client.render;
 
-import toni.sodiumdynamiclights.api.DynamicLightHandler;
-import toni.sodiumdynamiclights.api.DynamicLightHandlers;
+import dev.lambdaurora.lambdynlights.api.DynamicLightHandler;
+import dev.lambdaurora.lambdynlights.api.DynamicLightHandlers;
 import toni.sodiumdynamiclights.SodiumDynamicLights;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.EntityType;

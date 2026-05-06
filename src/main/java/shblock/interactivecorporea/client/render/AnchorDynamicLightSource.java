@@ -15,40 +15,37 @@ class AnchorDynamicLightSource implements DynamicLightSource {
 
   double x, y, z;
 
-  private boolean dynamicLightEnabled;
   private int lastLuminance = -1;
   private double prevX = Double.MIN_VALUE;
   private double prevY = Double.MIN_VALUE;
   private double prevZ = Double.MIN_VALUE;
   private LongOpenHashSet trackedLitChunkPos = new LongOpenHashSet();
 
-  @Override public double getDynamicLightX() { return x; }
-  @Override public double getDynamicLightY() { return y; }
-  @Override public double getDynamicLightZ() { return z; }
+  @Override public double sdl$getDynamicLightX() { return x; }
+  @Override public double sdl$getDynamicLightY() { return y; }
+  @Override public double sdl$getDynamicLightZ() { return z; }
 
   @Override
-  public Level getDynamicLightLevel() {
+  public Level sdl$getDynamicLightLevel() {
     return Minecraft.getInstance().level;
   }
 
-  @Override public boolean isDynamicLightEnabled() { return dynamicLightEnabled; }
-  @Override public void setDynamicLightEnabled(boolean enabled) { this.dynamicLightEnabled = enabled; }
-  @Override public void resetDynamicLight() { lastLuminance = 0; }
+  @Override public void sdl$resetDynamicLight() { lastLuminance = 0; }
 
   @Override
-  public int getLuminance() {
+  public int sdl$getLuminance() {
     var face = RequestingHaloInterfaceHandler.getInterface();
     if (face == null || !face.isAnchored()) return 0;
     return (int) Math.round(face.getOpenCloseProgress() * MAX_LUMINANCE);
   }
 
   @Override
-  public void dynamicLightTick() {
+  public void sdl$dynamicLightTick() {
     SodiumDynamicLights.updateTracking(this);
   }
 
   @Override
-  public boolean shouldUpdateDynamicLight() {
+  public boolean sdl$shouldUpdateDynamicLight() {
     return true;
   }
 
@@ -57,7 +54,7 @@ class AnchorDynamicLightSource implements DynamicLightSource {
     double dx = x - prevX;
     double dy = y - prevY;
     double dz = z - prevZ;
-    int lum = getLuminance();
+    int lum = sdl$getLuminance();
 
     if (Math.abs(dx) <= 0.1 && Math.abs(dy) <= 0.1 && Math.abs(dz) <= 0.1
         && lum == lastLuminance) {

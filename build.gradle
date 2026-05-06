@@ -97,6 +97,13 @@ repositories {
         url = 'https://maven.theillusivec4.top/'
     }
     maven {
+        name = 'CurseForge'
+        url = 'https://cursemaven.com'
+        content {
+            includeGroup 'curse.maven'
+        }
+    }
+    maven {
         name = 'Modrinth'
         url = 'https://api.modrinth.com/maven'
         content {
@@ -120,8 +127,8 @@ dependencies {
 
     modRuntimeOnly("maven.modrinth:oculus:${oculus_version}")
     modRuntimeOnly("maven.modrinth:embeddium:${embeddium_version}")
-    modCompileOnly("maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}")
-    modRuntimeOnly("maven.modrinth:sodium-dynamic-lights:${sodium_dynamic_lights_version}")
+    modCompileOnly("curse.maven:dynamiclights-reforged-551736:${sodium_dynamic_lights_version}")
+    modRuntimeOnly("curse.maven:dynamiclights-reforged-551736:${sodium_dynamic_lights_version}")
 
 }
 
