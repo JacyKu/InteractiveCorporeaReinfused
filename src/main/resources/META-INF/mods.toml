@@ -5,11 +5,11 @@ license="MIT"
 [[mods]]
 modId="interactive_corporea"
 version="${version}"
-displayName="Interactive Corporea"
+displayName="Interactive Corporea Reinfused"
 logoFile="icon.png"
-authors="shBLOCK"
+authors="jcyyy_, Originally shBLOCK"
 description='''
-An add-on mod for Botania to make the Corporea system easier to use.
+A port of the add-on mod for Botania to make the Corporea system easier to use.
 '''
 
 itemIcon="interactive_corporea:requesting_halo" # custom icon for Catalogue's mod list
@@ -24,7 +24,7 @@ configBackground="botania:textures/block/corporea_block.png" # background for Co
 [[dependencies.interactive_corporea]]
     modId="minecraft"
     mandatory=true
-    versionRange="[1.20.1,1.21)"
+    versionRange="[1.20.1,1.20.1)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.interactive_corporea]]
