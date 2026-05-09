@@ -1,10 +1,21 @@
 # Changelog
 ---
 
+## 1.2.0-beta
+
+### Added
+- Crafting as a module.
+- New Lexica entries.
+- Config setting for Unanchor sound.
+
+### Fixed
+- Fixed bug where player spins after looking around and re-anchoring the halo.
+
+---
 ## 1.1.1-beta
 
 ### Fixed
-- Game would crash because of the wrong Dynamic Lights version
+- Game would crash because of the wrong Dynamic Lights version.
 
 ---
 ## 1.1.0-beta

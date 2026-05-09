@@ -36,11 +36,11 @@
   "interactive_corporea.halo_module.search": "搜索",
   "interactive_corporea.halo_module.update": "自动更新",
   "interactive_corporea.halo_module.anchor": "世界锚点",
-  "interactive_corporea.halo_module.magnate": "磁力戒指",
+  "interactive_corporea.halo_module.magnetization": "磁力戒指",
   "interactive_corporea.halo_module.crafting": "合成",
   "interactive_corporea.halo_module.quantum_inserter": "量子插入器",
   "interactive_corporea.halo_module.far_reach": "远程采集戒指",
-  "interactive_corporea.halo_module.greater_magnate": "强效磁力戒指",
+  "interactive_corporea.halo_module.greater_magnetization": "强效磁力戒指",
   "interactive_corporea.halo_module.black_hole": "黑洞护符",
   "interactive_corporea.halo_module.range": "范围模块: +%s",
 

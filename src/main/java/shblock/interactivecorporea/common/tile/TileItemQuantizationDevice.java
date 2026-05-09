@@ -83,7 +83,7 @@ public class TileItemQuantizationDevice extends BaseCorporeaBlockEntity implemen
       }
     }
     Vector3 fromPos = new Vector3(getBlockPos().getX() + .5, getBlockPos().getY() + .5, getBlockPos().getZ() + .5);
-    senders.add(new Sender(resultStack, level, fromPos, requestPos, normal, player, ItemRequestingHalo.isModuleInstalled(halo, HaloModule.MAGNATE)));
+    senders.add(new Sender(resultStack, level, fromPos, requestPos, normal, player, ItemRequestingHalo.isModuleInstalled(halo, HaloModule.MAGNETIZATION)));
     setChanged();
     VanillaPacketDispatcher.dispatchTEToNearbyPlayers(this);
     consumeMana(getManaCost(resultStack.getCount()));

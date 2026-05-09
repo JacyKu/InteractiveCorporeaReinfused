@@ -54,11 +54,12 @@ public class RequestingHaloInterfaceHandler {
   private static RequestingHaloInterface haloInterface;
   private static final Map<Integer, RemoteRequestingHaloInterface> remoteInterfaces = new HashMap<>();
   private static int lastViewSyncTick = -1;
+  private static boolean haloKeyboardListenerActive = false;
 
   public static final KeyMapping KEY_BINDING = new KeyMapping(
       "key.interactive_corporea.requesting_halo",
       KeyConflictContext.IN_GAME,
-      InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_TAB),
+      InputConstants.Type.KEYSYM.getOrCreate(GLFW_KEY_R),
       IC.KEY_CATEGORY
   );
 
@@ -68,7 +69,7 @@ public class RequestingHaloInterfaceHandler {
 
   public static void openInterface(RequestingHaloInterface face) {
     haloInterface = face;
-    setupKeyboardListener();
+    updateKeyboardListenerOwnership();
     face.playSound(ModSounds.haloOpen, 1F);
     syncRemoteState(true);
   }
@@ -78,30 +79,40 @@ public class RequestingHaloInterfaceHandler {
   }
 
   private static void setupKeyboardListener() {
+    haloKeyboardListenerActive = true;
     KeyMapping.releaseAll();
     glfwSetKeyCallback(mc.getWindow().getWindow(),
         (windowPointer, key, scanCode, action, modifiers) -> {
           preKeyEvent(key, scanCode, action, modifiers);
-          if ((!shouldCancelKeyEvent(key, scanCode)) || mc.screen != null) {
+          if (!shouldCancelKeyEvent(key, scanCode)) {
             mc.execute(() -> mc.keyboardHandler.keyPress(windowPointer, key, scanCode, action, modifiers));
           }
         });
     glfwSetCharModsCallback(mc.getWindow().getWindow(), (windowPointer, codePoint, modifiers) -> {
-      Screen screen = mc.screen;
-      if (screen != null) {
-        mc.execute(() -> {
-          for (char character : Character.toChars(codePoint)) {
-            screen.charTyped(character, modifiers);
-          }
-        });
-      } else {
-        RequestingHaloInterfaceHandler.charCallback(codePoint, modifiers);
-      }
+      RequestingHaloInterfaceHandler.charCallback(codePoint, modifiers);
     });
   }
 
   public static void resetKeyboardListener() {
+    haloKeyboardListenerActive = false;
     mc.keyboardHandler.setup(mc.getWindow().getWindow());
+  }
+
+  private static void updateKeyboardListenerOwnership() {
+    if (haloInterface == null) {
+      if (haloKeyboardListenerActive) {
+        resetKeyboardListener();
+      }
+      return;
+    }
+
+    if (mc.screen != null) {
+      if (haloKeyboardListenerActive) {
+        resetKeyboardListener();
+      }
+    } else if (!haloKeyboardListenerActive) {
+      setupKeyboardListener();
+    }
   }
 
   /**
@@ -194,7 +205,7 @@ public class RequestingHaloInterfaceHandler {
     }
   }
 
-  public static void handleRemoteState(int playerId, boolean open, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint) {
+  public static void handleRemoteState(int playerId, boolean open, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint, boolean hasCraftingModule, List<ItemStack> craftingSlots, List<ItemStack> craftingShadowSlots) {
     if (mc.player != null && mc.player.getId() == playerId) {
       return;
     }
@@ -208,10 +219,10 @@ public class RequestingHaloInterfaceHandler {
     }
 
     if (remote == null) {
-      remote = new RemoteRequestingHaloInterface(playerId, rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint);
+      remote = new RemoteRequestingHaloInterface(playerId, rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint, hasCraftingModule, craftingSlots, craftingShadowSlots);
       remoteInterfaces.put(playerId, remote);
     } else {
-      remote.update(rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint);
+      remote.update(rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint, hasCraftingModule, craftingSlots, craftingShadowSlots);
     }
   }
 
@@ -312,6 +323,7 @@ public class RequestingHaloInterfaceHandler {
   public static void tick(TickEvent.ClientTickEvent event) {
     if (event.phase == TickEvent.Phase.START) {
       if (getInterface() != null) {
+        updateKeyboardListenerOwnership();
         getInterface().tick();
       }
       for (RemoteRequestingHaloInterface remote : remoteInterfaces.values()) {
@@ -322,7 +334,7 @@ public class RequestingHaloInterfaceHandler {
 
   @SubscribeEvent
   public static void onMouseInput(InputEvent.MouseButton.Pre event) {
-    if (getInterface() != null) {
+    if (getInterface() != null && mc.screen == null) {
       if (!getInterface().isOpenClose()) {
         if (getInterface().onMouseInput(event.getButton(), event.getAction(), event.getModifiers())) {
           event.setCanceled(true);
@@ -333,7 +345,7 @@ public class RequestingHaloInterfaceHandler {
 
   @SubscribeEvent
   public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
-    if (getInterface() != null) {
+    if (getInterface() != null && mc.screen == null) {
       if (!getInterface().isOpenClose()) {
         if (getInterface().onMouseScroll(event.getScrollDelta(), event.isRightDown(), event.isMiddleDown(), event.isLeftDown())) {
           event.setCanceled(true);
@@ -356,7 +368,7 @@ public class RequestingHaloInterfaceHandler {
 
   @SubscribeEvent
   public static void onKeyEvent(InputEvent.Key event) {
-    if (getInterface() != null) {
+    if (getInterface() != null && mc.screen == null) {
       if (!getInterface().isOpenClose()) {
         getInterface().onKeyEvent(event.getKey(), event.getScanCode(), event.getAction(), event.getModifiers());
       }
@@ -391,7 +403,8 @@ public class RequestingHaloInterfaceHandler {
     }
 
     if (screen != null) {
-      return jeiUnderMouseGetter.get();
+      ItemStack underMouse = jeiUnderMouseGetter.get();
+      return underMouse != null ? underMouse : ItemStack.EMPTY;
     }
 
     return ItemStack.EMPTY;

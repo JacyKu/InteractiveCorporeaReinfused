@@ -2,13 +2,13 @@
 
 Interactive Corporea Reinfused is an add-on mod for [Botania](https://www.curseforge.com/minecraft/mc-mods/botania "Botania") that makes the Corporea system easier to use, more immersive, and more magical while staying faithful to [Botania's design philosophy](https://botaniamod.net/ "Botania") of avoiding full-screen GUIs.
 
-> Ported to: Forge 1.20.1-47.4.10  
+> Ported to: Forge 1.20.1-47.4.10
 > Recent additions and fixes are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ## Highlights
 
 - In-world **Requesting Halo** interface for browsing and requesting items from a Corporea network.
-- Halo modules for **search**, **HUD details**, **auto updates**, **anchoring**, **item return**, and **range expansion**.
+- Halo modules for **search**, **HUD details**, **auto updates**, **crafting**, **anchoring**, **item return**, and **range expansion**.
 - Animated **shader-based halo backgrounds** unlocked by Botania flowers, plus legacy petal styles.
 - **Oculus compatibility** and **dynamic lighting** intergration.
 
@@ -53,4 +53,4 @@ Legacy **petal-based** styles are also available:
 ## Roadmap
 
 - Add a toggle to keep the Halo aligned with the player view angle.
-- Fix player spinning when turning around and unanchoring the Halo.
+- Add scrolling when the Halo is anchored.

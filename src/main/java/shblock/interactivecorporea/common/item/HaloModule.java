@@ -14,11 +14,11 @@ public enum HaloModule {
   SEARCH(2, "search", BotaniaItems.itemFinder),
   UPDATE(3, "update", BotaniaBlocks.hourglass.asItem()),
   ANCHOR(4, "anchor", BotaniaFlowerBlocks.pureDaisyFloating.asItem()),
-  MAGNATE(5, "magnate", BotaniaItems.magnetRing, 10),
+  MAGNETIZATION(5, "magnetization", BotaniaItems.magnetRing, 10),
   CRAFTING(6, "crafting", BotaniaItems.autocraftingHalo),
   QUANTUM_INSERTER(7, "quantum_inserter", BotaniaItems.lensWarp),
   FAR_REACH(8, "far_reach", BotaniaItems.reachRing, 20),
-  GREATER_MAGNATE(9, "greater_magnate", BotaniaItems.magnetRingGreater, 30),
+  GREATER_MAGNETIZATION(9, "greater_magnetization", BotaniaItems.magnetRingGreater, 30),
   BLACK_HOLE(10, "black_hole", BotaniaItems.blackHoleTalisman, 50);
 
   public final int bitMask;

@@ -7,6 +7,7 @@ import net.minecraft.core.GlobalPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.network.NetworkEvent;
 import shblock.interactivecorporea.common.corporea.CorporeaUtil;
+import shblock.interactivecorporea.common.item.HaloModule;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.tile.TileItemQuantizationDevice;
 import shblock.interactivecorporea.common.util.CISlotPointer;
@@ -22,7 +23,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 public class CPacketRequestItemListUpdate {
-  private static final float INITIAL_ROTATION = 36F;
+  private static final float INITIAL_ROTATION = 0F;
   private static final String PREFIX_LIST_HEIGHT = "settings_item_list_height";
   private static final Map<UUID, Float> REMOTE_ROTATION_OFFSETS = new HashMap<>();
   private static final Map<UUID, Integer> REMOTE_LIST_HEIGHTS = new HashMap<>();
@@ -89,6 +90,7 @@ public class CPacketRequestItemListUpdate {
   }
 
   private static void broadcastRemoteState(ServerPlayer player, ItemStack halo, List<ItemStack> result, float rotationOffset) {
+    boolean hasCraftingModule = ItemRequestingHalo.isModuleInstalled(halo, HaloModule.CRAFTING);
     ModPacketHandler.sendToPlayersInWorldExcept(player, SPacketRemoteRequestingHaloState.open(
         player.getId(),
         rotationOffset,
@@ -96,8 +98,20 @@ public class CPacketRequestItemListUpdate {
         true,
         ItemRequestingHalo.getInterfaceStyle(halo),
         ItemRequestingHalo.getHaloTintPacked(halo),
-        result
+        result,
+        hasCraftingModule,
+        getCraftingStacks(halo, false),
+        getCraftingStacks(halo, true)
     ));
+  }
+
+  private static List<ItemStack> getCraftingStacks(ItemStack halo, boolean shadow) {
+    List<ItemStack> stacks = new java.util.ArrayList<>(9);
+    for (int i = 0; i < 9; i++) {
+      ItemStack stack = shadow ? ItemRequestingHalo.getShadowStackInCraftingSlot(halo, i) : ItemRequestingHalo.getStackInCraftingSlot(halo, i);
+      stacks.add(stack.copy());
+    }
+    return stacks;
   }
 
   private static float getRemoteRotationOffset(ServerPlayer player) {

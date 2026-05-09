@@ -46,6 +46,7 @@ public class ItemRequestingHalo extends Item {
   private static final String PREFIX_SENDER_POS = "sender_position";
   private static final String PREFIX_MODULES = "modules";
   private static final String PREFIX_CRAFTING_SLOT_ITEMS = "crafting_slot_items";
+  private static final String PREFIX_CRAFTING_SLOT_SHADOW_ITEMS = "crafting_slot_shadow_items";
   private static final String PREFIX_INTERFACE_STYLE = "interface_style";
   private static final String PREFIX_HALO_TINT = "halo_tint"; // packed 0xRRGGBB, default 0xFFFFFF
   private static final String PREFIX_HALO_TINT_DYE = "halo_tint_dye"; // DyeColor.getId(), -1 = default
@@ -204,6 +205,10 @@ public class ItemRequestingHalo extends Item {
     return ItemNBTHelper.getInt(stack, PREFIX_HALO_TINT, 0xFFFFFF);
   }
 
+  public static void setHaloTintPacked(ItemStack stack, int packed) {
+    ItemNBTHelper.setInt(stack, PREFIX_HALO_TINT, packed & 0xFFFFFF);
+  }
+
   public static float[] getHaloTintColor(ItemStack stack) {
     return unpackTint(getHaloTintPacked(stack));
   }
@@ -244,19 +249,39 @@ public class ItemRequestingHalo extends Item {
     return sb.toString();
   }
 
-  public static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo) {
+  private static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo, String key) {
     boolean didChange = false;
-    ListTag nbt = ItemNBTHelper.getList(halo, PREFIX_CRAFTING_SLOT_ITEMS, Tag.TAG_COMPOUND, true);
+    ListTag nbt = ItemNBTHelper.getList(halo, key, Tag.TAG_COMPOUND, true);
     if (nbt == null) {
       nbt = new ListTag();
       didChange = true;
     }
     for (int i = nbt.size(); i < 9; i++) {
       nbt.add(new CompoundTag());
+      didChange = true;
     }
-    if (didChange)
-      ItemNBTHelper.setList(halo, PREFIX_CRAFTING_SLOT_ITEMS, nbt);
+    if (didChange) {
+      ItemNBTHelper.setList(halo, key, nbt);
+    }
     return nbt;
+  }
+
+  public static ListTag getOrCreateCraftingSlotNBTList(ItemStack halo) {
+    return getOrCreateCraftingSlotNBTList(halo, PREFIX_CRAFTING_SLOT_ITEMS);
+  }
+
+  public static ListTag getOrCreateCraftingSlotShadowNBTList(ItemStack halo) {
+    return getOrCreateCraftingSlotNBTList(halo, PREFIX_CRAFTING_SLOT_SHADOW_ITEMS);
+  }
+
+  private static ItemStack getCraftingSlotStack(ListTag list, int slot) {
+    return ItemStack.of(list.getCompound(slot));
+  }
+
+  private static ItemStack setCraftingSlotStack(ListTag list, int slot, ItemStack newStack) {
+    ItemStack oldStack = ItemStack.of(list.getCompound(slot));
+    list.set(slot, newStack.isEmpty() ? new CompoundTag() : newStack.save(new CompoundTag()));
+    return oldStack;
   }
 
   /**
@@ -291,15 +316,19 @@ public class ItemRequestingHalo extends Item {
    * This could be called on both client and server
    */
   public static ItemStack getStackInCraftingSlot(ItemStack halo, int slot) {
-    ListTag list = getOrCreateCraftingSlotNBTList(halo);
-    return ItemStack.of(list.getCompound(slot));
+    return getCraftingSlotStack(getOrCreateCraftingSlotNBTList(halo), slot);
   }
 
   public static ItemStack setStackInCraftingSlot(ItemStack halo, int slot, ItemStack newStack) {
-    ListTag list = getOrCreateCraftingSlotNBTList(halo);
-    ItemStack oldStack = ItemStack.of(list.getCompound(slot));
-    list.set(slot, newStack.isEmpty() ? new CompoundTag() : newStack.save(new CompoundTag()));
-    return oldStack;
+    return setCraftingSlotStack(getOrCreateCraftingSlotNBTList(halo), slot, newStack);
+  }
+
+  public static ItemStack getShadowStackInCraftingSlot(ItemStack halo, int slot) {
+    return getCraftingSlotStack(getOrCreateCraftingSlotShadowNBTList(halo), slot);
+  }
+
+  public static ItemStack setShadowStackInCraftingSlot(ItemStack halo, int slot, ItemStack newStack) {
+    return setCraftingSlotStack(getOrCreateCraftingSlotShadowNBTList(halo), slot, newStack);
   }
 
   private String globalPosToString(GlobalPos pos) {

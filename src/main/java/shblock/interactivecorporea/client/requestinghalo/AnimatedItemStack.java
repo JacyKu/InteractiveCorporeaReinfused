@@ -143,7 +143,7 @@ public class AnimatedItemStack {
     ms.pop();
   }
 
-  protected static void renderAmountText(MatrixStack ms, String text, int color, MultiBufferSource.BufferSource buffers) {
+  public static void renderAmountText(MatrixStack ms, String text, int color, MultiBufferSource.BufferSource buffers) {
     int alpha = color >>> 24;
     color = (color & 0x00FFFFFF) | (int) (MathHelper.lerp(alpha / 255D, 5D, 249D)) << 24; //?????????????????
 

@@ -1,6 +1,7 @@
 package shblock.interactivecorporea.client.requestinghalo.crafting;
 
 import com.mojang.blaze3d.matrix.MatrixStack;
+import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -13,51 +14,56 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.RecipeManager;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.core.NonNullList;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.vector.Matrix4f;
-import net.minecraft.util.math.vector.Vector3d;
 import net.minecraft.util.math.vector.Vector3f;
 import shblock.interactivecorporea.client.jei.DummyTransferringGui;
 import shblock.interactivecorporea.client.render.ModRenderTypes;
 import shblock.interactivecorporea.client.render.RenderUtil;
-import shblock.interactivecorporea.client.render.shader.SimpleShaderProgram;
+import shblock.interactivecorporea.client.requestinghalo.AnimatedItemStack;
 import shblock.interactivecorporea.client.requestinghalo.HaloPickedItem;
+import shblock.interactivecorporea.client.requestinghalo.HaloStylePalette;
 import shblock.interactivecorporea.client.util.RenderTick;
+import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
+import shblock.interactivecorporea.common.item.ItemRequestingHalo;
 import shblock.interactivecorporea.common.network.CPacketChangeStackInHaloCraftingSlot;
+import shblock.interactivecorporea.common.network.CPacketDoCraft;
+import shblock.interactivecorporea.common.network.CPacketSetHaloCraftingShadowSlot;
 import shblock.interactivecorporea.common.network.ModPacketHandler;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.MathUtil;
-import shblock.interactivecorporea.common.util.StackHelper;
+import shblock.interactivecorporea.common.util.TextHelper;
 import shblock.interactivecorporea.common.util.Vec2d;
-import vazkii.botania.common.core.helper.ItemNBTHelper;
 import vazkii.botania.common.core.helper.Vector3;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.*;
 
-import static org.lwjgl.opengl.GL43.*;
-
 public class HaloCraftingInterface {
   private static final Minecraft mc = Minecraft.getInstance();
-  private static final SimpleShaderProgram bgShader = new SimpleShaderProgram("common_120_world", "halo_crafting_bg", Uniforms::init);
-  private static class Uniforms {
-    private static int TIME;
-    private static int MOUSE_OVER_ANIMATION;
-    private static int BG_SIZE;
-    private static int EDGE_FLOWING_TIME;
-
-    private static void init(SimpleShaderProgram shader) {
-      TIME = shader.getUniformLocation("time");
-      MOUSE_OVER_ANIMATION = shader.getUniformLocation("mouseOverAnimation");
-      BG_SIZE = shader.getUniformLocation("bgSize");
-      EDGE_FLOWING_TIME = shader.getUniformLocation("edgeFlowingTime");
-    }
-  }
+  private static final Vector3 Y_AXIS = new Vector3(0, 1, 0);
+  private static final Vector3 X_AXIS = new Vector3(1, 0, 0);
+  private static final double GRID_TILT_DEGREES = 18D;
+  private static final double GRID_TILT_RADIANS = Math.toRadians(GRID_TILT_DEGREES);
+  private static final float PANEL_CORNER_RADIUS = .22F;
+  private static final float PANEL_FADE_WIDTH = .24F;
+  private static final float PANEL_WAVE_AMPLITUDE = .032F;
+  private static final float PANEL_WAVE_FREQUENCY = 5.5F;
+  private static final float PANEL_WAVE_SPEED = .065F;
+  private static final int PANEL_SEGMENTS = 18;
+  private static final float SLOT_CORNER_RADIUS = .2F;
+  private static final float SLOT_FADE_WIDTH = .2F;
+  private static final int SLOT_SEGMENTS = 8;
+  private static final float CRAFT_BUTTON_CENTER_X = -1.34F;
+  private static final float CRAFT_BUTTON_HALF_WIDTH = .36F;
+  private static final float CRAFT_BUTTON_HALF_HEIGHT = .39F;
+  private static final float CRAFT_BUTTON_BORDER = .04F;
+  private static final float CRAFT_BUTTON_CORNER_RADIUS = .15F;
+  private static final float CRAFT_BUTTON_FADE_WIDTH = .08F;
+  private static final int CRAFT_BUTTON_SEGMENTS = 10;
+  private static final MultiBufferSource.BufferSource TEXT_BUFFERS = MultiBufferSource.immediate(new BufferBuilder(64));
 
   public final CISlotPointer haloItemSlot;
   public ItemStack haloStack;
@@ -71,24 +77,23 @@ public class HaloCraftingInterface {
   private static final Vec2d NOT_POINTING = new Vec2d(Double.NaN, Double.NaN);
 
   private Vec2d pointingLocalPos = NOT_POINTING;
+  private boolean showCraftButton = true;
 
   private double mouseOverAnimation = 0;
-  private double edgeFlowingTime = 0;
+  private double craftButtonHoverAnimation = 0;
 
   private final CraftingInterfaceSlot[] slots = new CraftingInterfaceSlot[9];
   private CraftingRecipe currentRecipe = null;
   private ItemStack currentOutput = ItemStack.EMPTY;
   private NonNullList<ItemStack> currentRemainingItems = NonNullList.withSize(9, ItemStack.EMPTY);
   private double craftingOutputAnimation = 0;
-  private final Map<ItemStack, Double> fadingCraftingOutputs = new HashMap<>();
 
   public HaloCraftingInterface(CISlotPointer haloItemSlot, ItemStack haloStack) {
     this.haloItemSlot = haloItemSlot;
     this.haloStack = haloStack;
 
-    ListTag shadowNBTList = getOrCreateListNBTForShadow();
     for (int i = 0; i < 9; i++) {
-      slots[i] = new CraftingInterfaceSlot(this, i, ItemStack.of(shadowNBTList.getCompound(i)));
+      slots[i] = new CraftingInterfaceSlot(this, i, ItemRequestingHalo.getShadowStackInCraftingSlot(haloStack, i));
     }
   }
 
@@ -102,6 +107,13 @@ public class HaloCraftingInterface {
     }
     mouseOverAnimation = MathHelper.clamp(mouseOverAnimation, 0, 1);
 
+    if (showCraftButton && isPointingAtCraftButton()) {
+      craftButtonHoverAnimation += RenderTick.delta / 7;
+    } else {
+      craftButtonHoverAnimation -= RenderTick.delta / 7;
+    }
+    craftButtonHoverAnimation = MathHelper.clamp(craftButtonHoverAnimation, 0, 1);
+
     if (!currentOutput.isEmpty()) {
       craftingOutputAnimation += RenderTick.delta / 8;
       if (craftingOutputAnimation > 1)
@@ -114,27 +126,24 @@ public class HaloCraftingInterface {
 
     ms.rotate(Vector3f.YP.rotation((float) -rotation));
     ms.translate(0, 0, pos);
+    ms.rotate(Vector3f.XP.rotationDegrees((float) -GRID_TILT_DEGREES));
     float scale = (float) (size * openCloseAnimation);
     ms.scale(scale, scale, scale);
 
-    bgShader.use();
-    glUniform1f(Uniforms.TIME, (float) (RenderTick.total / 20));
     double mouseOverFactor = (1 - Math.cos(mouseOverAnimation * Math.PI)) / 2;
-    glUniform1f(Uniforms.MOUSE_OVER_ANIMATION, (float) mouseOverAnimation);
-    edgeFlowingTime += RenderTick.delta * (mouseOverAnimation * 1.5 + .5);
-    glUniform1f(Uniforms.EDGE_FLOWING_TIME, (float) edgeFlowingTime);
-    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
-    VertexConsumer builder = buffers.getBuffer(ModRenderTypes.craftingBg);
-    Matrix4f matrix = ms.getLast().getMatrix();
-    float r=0F, g=.5F, b=1F, a=.6F;
+    float[] plateColor = getPlateColor((float) mouseOverFactor);
+    float[] glowColor = getGlowColor();
+    float a = (float) (.18F + mouseOverFactor * .08F);
     float s = (float) (1 + mouseOverFactor * .3);
-    glUniform1f(Uniforms.BG_SIZE, s);
-    builder.vertex(matrix, +s, 0, +s).color(r, g, b, a).uv(+s, +s).endVertex();
-    builder.vertex(matrix, +s, 0, -s).color(r, g, b, a).uv(+s, -s).endVertex();
-    builder.vertex(matrix, -s, 0, -s).color(r, g, b, a).uv(-s, -s).endVertex();
-    builder.vertex(matrix, -s, 0, +s).color(r, g, b, a).uv(-s, +s).endVertex();
-    buffers.endBatch(ModRenderTypes.craftingBg);
-    bgShader.release();
+    renderPanel(ms, s * 1.05F, s * 1.05F, PANEL_CORNER_RADIUS * 1.1F, PANEL_FADE_WIDTH * 1.25F, PANEL_SEGMENTS,
+        PANEL_WAVE_AMPLITUDE * 1.35F, PANEL_WAVE_FREQUENCY * .85F, PANEL_WAVE_SPEED * .9F, .85F,
+        glowColor[0], glowColor[1], glowColor[2], a * .18F);
+    renderPanel(ms, s, s, PANEL_CORNER_RADIUS, PANEL_FADE_WIDTH, PANEL_SEGMENTS,
+        PANEL_WAVE_AMPLITUDE, PANEL_WAVE_FREQUENCY, PANEL_WAVE_SPEED, 0F,
+        plateColor[0], plateColor[1], plateColor[2], a);
+    if (showCraftButton) {
+      renderCraftButton(ms);
+    }
 
     ms.push();
     ms.translate(0, .01, 0);
@@ -143,66 +152,267 @@ public class HaloCraftingInterface {
     }
     ms.pop();
 
-    if (!currentOutput.isEmpty()) {
-      renderOutputItem(ms, currentOutput, craftingOutputAnimation, 1);
+    ms.pop();
+  }
+
+  public void snapRotation(double rotation) {
+    this.rotation = rotation;
+    this.targetRotation = rotation;
+    this.rotationSpd = 0;
+  }
+
+  public void setShowCraftButton(boolean showCraftButton) {
+    this.showCraftButton = showCraftButton;
+  }
+
+  public float[] getSlotColor(float hoverFactor) {
+    float phase = (float) (RenderTick.total * .012D);
+    float[] secondary = getStyledColor(false, phase + .35D);
+    float[] accent = getStyledColor(true, phase + .7D);
+    return blendColors(secondary, accent, .22F + hoverFactor * .48F);
+  }
+
+  private void renderCraftButton(MatrixStack ms) {
+    float hoverFactor = (float) ((1 - Math.cos(craftButtonHoverAnimation * Math.PI)) / 2);
+    boolean craftable = currentRecipe != null;
+    float[] plateBase = getPlateColor(Math.max(.1F, hoverFactor * .8F));
+    float[] accent = getStyledColor(true, RenderTick.total * .014D + .2D);
+    float[] slotBase = getSlotColor(Math.max(.15F, hoverFactor * .85F));
+    float[] glowColor = blendColors(plateBase, accent, .46F + hoverFactor * .16F);
+    float[] fillColor = craftable
+      ? blendColors(plateBase, slotBase, .28F + hoverFactor * .12F)
+      : blendColors(plateBase, slotBase, .12F + hoverFactor * .06F);
+    float glowAlpha = craftable ? .34F + hoverFactor * .1F : .16F + hoverFactor * .05F;
+    float fillAlpha = craftable ? .52F + hoverFactor * .08F : .24F + hoverFactor * .05F;
+
+    ms.push();
+    ms.translate(CRAFT_BUTTON_CENTER_X, .014D + hoverFactor * .008D, 0D);
+    renderPanel(ms,
+      CRAFT_BUTTON_HALF_WIDTH + CRAFT_BUTTON_BORDER,
+      CRAFT_BUTTON_HALF_HEIGHT + CRAFT_BUTTON_BORDER,
+      CRAFT_BUTTON_CORNER_RADIUS * 1.1F,
+      CRAFT_BUTTON_FADE_WIDTH,
+      CRAFT_BUTTON_SEGMENTS,
+      PANEL_WAVE_AMPLITUDE * .55F,
+      PANEL_WAVE_FREQUENCY,
+      PANEL_WAVE_SPEED,
+      .35F,
+      glowColor[0], glowColor[1], glowColor[2], glowAlpha);
+    ms.push();
+    ms.translate(0D, .004D + hoverFactor * .006D, 0D);
+    renderPanel(ms,
+      CRAFT_BUTTON_HALF_WIDTH,
+      CRAFT_BUTTON_HALF_HEIGHT,
+      CRAFT_BUTTON_CORNER_RADIUS,
+      CRAFT_BUTTON_FADE_WIDTH,
+      CRAFT_BUTTON_SEGMENTS,
+      PANEL_WAVE_AMPLITUDE * .35F,
+      PANEL_WAVE_FREQUENCY,
+      PANEL_WAVE_SPEED,
+      0F,
+      fillColor[0], fillColor[1], fillColor[2], fillAlpha);
+    if (craftable && !currentOutput.isEmpty()) {
+      renderCraftButtonOutput(ms, hoverFactor);
+    }
+    ms.pop();
+    ms.pop();
+  }
+
+  private void renderCraftButtonOutput(MatrixStack ms, float hoverFactor) {
+    double outputFactor = (1 - Math.cos(craftingOutputAnimation * Math.PI)) / 2;
+    float outputScale = (float) (.66D + outputFactor * .18D + hoverFactor * .05D);
+    float lift = hoverFactor * .02F;
+
+    ms.push();
+    ms.translate(-.015D, .03D + lift, -.02D);
+    ms.scale(outputScale, 1F, outputScale);
+    ms.rotate(Vector3f.XP.rotationDegrees(90));
+    ms.rotate(Vector3f.YP.rotationDegrees(180));
+    RenderUtil.renderFlatItem(ms, currentOutput);
+    ms.pop();
+
+    renderCraftButtonOutputCount(ms, currentOutput, outputScale, lift);
+  }
+
+  private void renderCraftButtonOutputCount(MatrixStack ms, ItemStack stack, float outputScale, float lift) {
+    if (stack.getCount() <= 1) {
+      return;
     }
 
-    fadingCraftingOutputs.replaceAll((tmpS, t) -> t - RenderTick.delta / 8);
-    List<ItemStack> toRemoveList = new ArrayList<>();
-    for (Map.Entry<ItemStack, Double> entry : fadingCraftingOutputs.entrySet()) {
-      double progress = entry.getValue();
-      if (progress < 0) {
-        toRemoveList.add(entry.getKey());
-      } else {
-        renderOutputItem(ms, entry.getKey(), 1, progress);
-      }
-    }
-    toRemoveList.forEach(fadingCraftingOutputs::remove);
+    String text = TextHelper.formatBigNumber(stack.getCount(), true);
+
+    ms.push();
+    ms.translate(-.015D, .03D + lift, -.02D);
+    ms.scale(outputScale, 1F, outputScale);
+    ms.rotate(Vector3f.XP.rotationDegrees(90));
+    float ts = 1F / 24F;
+    ms.scale(ts, ts, ts);
+    ms.translate(-10D, -4D, -0.08D);
+    AnimatedItemStack.renderAmountText(ms, text, 0xFFFFFFFF, TEXT_BUFFERS);
 
     ms.pop();
   }
 
-  private void renderOutputItem(MatrixStack ms, ItemStack stack, double normalizedScale, double alpha) {
-    RenderUtil.applyStippling(16, () -> {
-      ms.push();
-      float scale = (float) (3 * (1 - Math.cos(normalizedScale * Math.PI)) / 2);
-      ms.scale(scale, scale, scale);
-      ms.translate(0, .02, 0);
-      ms.rotate(Vector3f.XP.rotationDegrees(90));
-      ms.rotate(Vector3f.YP.rotationDegrees(180));
-      RenderUtil.applyStippling(alpha * (Math.sin(RenderTick.total / 5) * .2 + .75), () -> {
-        RenderUtil.renderFlatItem(ms, stack);
-      });
-
-      ms.pop();
-    });
+  public void renderSlotBackground(MatrixStack ms, float r, float g, float b, float alpha) {
+    renderPanel(ms, 1F, 1F, SLOT_CORNER_RADIUS, SLOT_FADE_WIDTH, SLOT_SEGMENTS,
+        0F, 0F, 0F, 0F, r, g, b, alpha);
   }
 
-  public void tick(@Nullable Vec2d worldPos2d) {
+  private float[] getPlateColor(float hoverFactor) {
+    float phase = (float) (RenderTick.total * .01D);
+    float[] primary = getStyledColor(false, phase);
+    float[] accent = getStyledColor(true, phase + .45D);
+    return blendColors(primary, accent, .14F + hoverFactor * .3F);
+  }
+
+  private float[] getGlowColor() {
+    return getStyledColor(true, RenderTick.total * .01D + .85D);
+  }
+
+  private float[] getStyledColor(boolean accentColor, double phase) {
+    HaloInterfaceStyle style = ItemRequestingHalo.getInterfaceStyle(haloStack);
+    float[] color = accentColor ? HaloStylePalette.accent(style, phase) : HaloStylePalette.primary(style, phase);
+    if (style.isShaderStyle()) {
+      return HaloStylePalette.tint(color, ItemRequestingHalo.getHaloTintColor(haloStack), .72F, .05F);
+    }
+    return color;
+  }
+
+  private static float[] blendColors(float[] first, float[] second, float amount) {
+    float inverse = 1F - amount;
+    return new float[] {
+        first[0] * inverse + second[0] * amount,
+        first[1] * inverse + second[1] * amount,
+        first[2] * inverse + second[2] * amount
+    };
+  }
+
+  private void renderPanel(MatrixStack ms, float halfWidth, float halfHeight, float cornerRadius, float fadeWidth, int segments,
+                           float waveAmplitude, float waveFrequency, float waveSpeed, float waveOffset,
+                           float r, float g, float b, float alpha) {
+    MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+    VertexConsumer builder = buffers.getBuffer(ModRenderTypes.craftingSlotBg);
+    Matrix4f matrix = ms.getLast().getMatrix();
+    float stepX = halfWidth * 2F / segments;
+    float stepZ = halfHeight * 2F / segments;
+
+    for (int xIndex = 0; xIndex < segments; xIndex++) {
+      float x0 = -halfWidth + xIndex * stepX;
+      float x1 = x0 + stepX;
+      for (int zIndex = 0; zIndex < segments; zIndex++) {
+        float z0 = -halfHeight + zIndex * stepZ;
+        float z1 = z0 + stepZ;
+
+        float px00 = panelX(x0, z0, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float pz00 = panelZ(x0, z0, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float a00 = alpha * panelAlpha(px00, pz00, halfWidth, halfHeight, cornerRadius, fadeWidth);
+
+        float px01 = panelX(x0, z1, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float pz01 = panelZ(x0, z1, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float a01 = alpha * panelAlpha(px01, pz01, halfWidth, halfHeight, cornerRadius, fadeWidth);
+
+        float px11 = panelX(x1, z1, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float pz11 = panelZ(x1, z1, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float a11 = alpha * panelAlpha(px11, pz11, halfWidth, halfHeight, cornerRadius, fadeWidth);
+
+        float px10 = panelX(x1, z0, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float pz10 = panelZ(x1, z0, halfWidth, halfHeight, fadeWidth, waveAmplitude, waveFrequency, waveSpeed, waveOffset);
+        float a10 = alpha * panelAlpha(px10, pz10, halfWidth, halfHeight, cornerRadius, fadeWidth);
+
+        if (a00 <= .001F && a01 <= .001F && a11 <= .001F && a10 <= .001F) {
+          continue;
+        }
+
+        builder.vertex(matrix, px11, 0, pz11).color(r, g, b, a11).endVertex();
+        builder.vertex(matrix, px10, 0, pz10).color(r, g, b, a10).endVertex();
+        builder.vertex(matrix, px00, 0, pz00).color(r, g, b, a00).endVertex();
+        builder.vertex(matrix, px01, 0, pz01).color(r, g, b, a01).endVertex();
+      }
+    }
+
+    buffers.endBatch(ModRenderTypes.craftingSlotBg);
+  }
+
+  private static float panelX(float x, float z, float halfWidth, float halfHeight, float fadeWidth,
+                              float waveAmplitude, float waveFrequency, float waveSpeed, float waveOffset) {
+    if (waveAmplitude <= 0F) {
+      return x;
+    }
+    float edgeDistance = halfWidth - Math.abs(x);
+    float edgeInfluence = edgeInfluence(edgeDistance, fadeWidth);
+    if (edgeInfluence <= 0F) {
+      return x;
+    }
+    double phase = z / Math.max(.001F, halfHeight) * waveFrequency + RenderTick.total * waveSpeed + waveOffset;
+    return x + Math.signum(x) * (float) Math.sin(phase) * waveAmplitude * edgeInfluence;
+  }
+
+  private static float panelZ(float x, float z, float halfWidth, float halfHeight, float fadeWidth,
+                              float waveAmplitude, float waveFrequency, float waveSpeed, float waveOffset) {
+    if (waveAmplitude <= 0F) {
+      return z;
+    }
+    float edgeDistance = halfHeight - Math.abs(z);
+    float edgeInfluence = edgeInfluence(edgeDistance, fadeWidth);
+    if (edgeInfluence <= 0F) {
+      return z;
+    }
+    double phase = x / Math.max(.001F, halfWidth) * waveFrequency + RenderTick.total * waveSpeed + waveOffset + 1.3D;
+    return z + Math.signum(z) * (float) Math.cos(phase) * waveAmplitude * .8F * edgeInfluence;
+  }
+
+  private static float panelAlpha(float x, float z, float halfWidth, float halfHeight, float cornerRadius, float fadeWidth) {
+    float distance = roundedRectDistance(x, z, halfWidth, halfHeight, cornerRadius);
+    return MathHelper.clamp(-distance / Math.max(.001F, fadeWidth), 0F, 1F);
+  }
+
+  private static float roundedRectDistance(float x, float z, float halfWidth, float halfHeight, float cornerRadius) {
+    float innerHalfWidth = Math.max(.001F, halfWidth - cornerRadius);
+    float innerHalfHeight = Math.max(.001F, halfHeight - cornerRadius);
+    float qx = Math.abs(x) - innerHalfWidth;
+    float qz = Math.abs(z) - innerHalfHeight;
+    float outsideX = Math.max(qx, 0F);
+    float outsideZ = Math.max(qz, 0F);
+    float outsideDistance = MathHelper.sqrt(outsideX * outsideX + outsideZ * outsideZ);
+    float insideDistance = Math.min(Math.max(qx, qz), 0F);
+    return outsideDistance + insideDistance - cornerRadius;
+  }
+
+  private static float edgeInfluence(float edgeDistance, float fadeWidth) {
+    return smoothstep(0F, fadeWidth * 1.35F, fadeWidth * 1.35F - edgeDistance);
+  }
+
+  private static float smoothstep(float edge0, float edge1, float value) {
+    float amount = MathHelper.clamp((value - edge0) / Math.max(.001F, edge1 - edge0), 0F, 1F);
+    return amount * amount * (3F - 2F * amount);
+  }
+
+  public Vector3 getInteractionPlanePoint() {
+    return new Vector3(0, 0, pos).rotate(-rotation, Y_AXIS);
+  }
+
+  public Vector3 getInteractionPlaneNormal() {
+    return new Vector3(0, 1, 0)
+        .rotate(-GRID_TILT_RADIANS, X_AXIS)
+        .rotate(-rotation, Y_AXIS);
+  }
+
+  public void tick(@Nullable Vector3 worldPos) {
     rotationSpd = MathUtil.smoothMovingSpeed(rotation, targetRotation, rotationSpd, .1, .8, .01);
 
-    pointingLocalPos = worldPos2d == null ? NOT_POINTING : toLocalPos(worldPos2d);
+    pointingLocalPos = worldPos == null ? NOT_POINTING : toLocalPos(worldPos);
   }
 
   public boolean tryOpenJei() {
-    if (isPointingAtInterface()) {
+    if (isPointingAtGrid()) {
       mc.setScreen(new DummyTransferringGui());
       return true;
     }
     return false;
   }
 
-  private ListTag getOrCreateListNBTForShadow() {
-    ListTag list = ItemNBTHelper.getList(haloStack, "crafting_slot_shadow_items", Tag.TAG_COMPOUND, false);
-    for (int i = list.size(); i < 9; i++) {
-      list.add(new CompoundTag());
-    }
-    return list;
-  }
-
   private void saveShadowItemToNBT(int slot, ItemStack shadow) {
-    ListTag list = getOrCreateListNBTForShadow();
-    list.set(slot, shadow.save(new CompoundTag()));
+    ItemRequestingHalo.setShadowStackInCraftingSlot(haloStack, slot, shadow);
   }
 
   /**
@@ -212,6 +422,7 @@ public class HaloCraftingInterface {
   public boolean tryPlaceShadowItem(int slot, ItemStack stack) {
     if (slots[slot].setShadowStack(stack)) {
       saveShadowItemToNBT(slot, stack);
+      ModPacketHandler.sendToServer(new CPacketSetHaloCraftingShadowSlot(haloItemSlot, slot, stack));
       return true;
     }
     return false;
@@ -223,36 +434,15 @@ public class HaloCraftingInterface {
     CraftingInterfaceSlot slot = getPointingSlot();
     if (slot == null) return false;
 
-    ItemStack newStack = mc.player.getMainHandItem();
     ItemStack shadowStack = slot.getShadowStack();
     ItemStack realStack = slot.getRealStack();
 
     if (isPut) {
-      if (newStack.isEmpty()) {
-        if (pickedItem == null) return false;
-        ItemStack pickedStack = pickedItem.getStack();
-        if (tryPlaceShadowItem(slot.getSlotIndex(), pickedStack)) {
-          updateRecipe();
-          return true;
-        }
-      }
-
-      if (realStack.isEmpty()) {
-        if (StackHelper.equalItemAndTag(newStack, shadowStack) || tryPlaceShadowItem(slot.getSlotIndex(), newStack)) {
-          updateRecipe();
-          ModPacketHandler.sendToServer(new CPacketChangeStackInHaloCraftingSlot(haloItemSlot, slot.getSlotIndex(), true, clickWorldPos));
-          return true;
-        }
-      }
-      if (realStack.getCount() < realStack.getMaxStackSize() && StackHelper.equalItemAndTag(newStack, realStack)) {
-        ModPacketHandler.sendToServer(new CPacketChangeStackInHaloCraftingSlot(haloItemSlot, slot.getSlotIndex(), true, clickWorldPos));
+      if (pickedItem == null) return false;
+      ItemStack pickedStack = pickedItem.getStack();
+      if (tryPlaceShadowItem(slot.getSlotIndex(), pickedStack)) {
+        updateRecipe();
         return true;
-      } else {
-        if (tryPlaceShadowItem(slot.getSlotIndex(), newStack)) {
-          updateRecipe();
-          ModPacketHandler.sendToServer(new CPacketChangeStackInHaloCraftingSlot(haloItemSlot, slot.getSlotIndex(), true, clickWorldPos));
-          return true;
-        }
       }
     } else {
       if (!realStack.isEmpty()) {
@@ -306,8 +496,7 @@ public class HaloCraftingInterface {
       currentRemainingItems = NonNullList.withSize(9, ItemStack.EMPTY);
     }
 
-    if (!oldOutput.isEmpty() && !ItemStack.isSameItemSameTags(oldOutput, currentOutput)) {
-      fadingCraftingOutputs.put(oldOutput, 1D);
+    if (!oldOutput.isEmpty() && (!ItemStack.isSameItemSameTags(oldOutput, currentOutput) || oldOutput.getCount() != currentOutput.getCount())) {
       craftingOutputAnimation = 0;
     }
   }
@@ -319,6 +508,7 @@ public class HaloCraftingInterface {
    */
   public boolean doCraft() {
     if (currentRecipe == null) return false;
+    ModPacketHandler.sendToServer(new CPacketDoCraft(haloItemSlot, 0));
     return true;
   }
 
@@ -337,7 +527,12 @@ public class HaloCraftingInterface {
   }
 
   public boolean isPointingAtInterface() {
-    return Math.abs(pointingLocalPos.x) < 1 && Math.abs(pointingLocalPos.y) < 1;
+    return isPointingAtGrid() || (showCraftButton && isPointingAtCraftButton());
+  }
+
+  public boolean isPointingAtCraftButton() {
+    return Math.abs(pointingLocalPos.x - CRAFT_BUTTON_CENTER_X) < CRAFT_BUTTON_HALF_WIDTH
+        && Math.abs(pointingLocalPos.y) < CRAFT_BUTTON_HALF_HEIGHT;
   }
 
   @Nullable
@@ -361,12 +556,17 @@ public class HaloCraftingInterface {
     this.size = size;
   }
 
-  private Vec2d toLocalPos(Vec2d worldPos2d) {
-    Vector3 yAxis = new Vector3(new Vector3d(0, 0, 1).rotateYaw((float) (-rotation - Math.PI)));
-    Vector3 xAxis = yAxis.yCrossProduct();
-    Vector3 worldPos = worldPos2d.toVector3();
-    double xDist = MathUtil.pointToOrgLineDistance(yAxis, worldPos);
-    double yDist = MathUtil.pointToOrgLineDistance(xAxis, worldPos);
-    return new Vec2d(xDist * Math.signum(worldPos.dotProduct(xAxis)) / size, (yDist * -Math.signum(worldPos.dotProduct(yAxis)) - (pos - size)) / size - 1);
+  private Vec2d toLocalPos(Vector3 worldPos) {
+    Vector3 planePoint = getInteractionPlanePoint();
+    Vector3 xAxis = new Vector3(1, 0, 0).rotate(-rotation, Y_AXIS);
+    Vector3 zAxis = new Vector3(0, 0, 1)
+        .rotate(-GRID_TILT_RADIANS, X_AXIS)
+        .rotate(-rotation, Y_AXIS);
+    Vector3 relativePos = worldPos.subtract(planePoint);
+    return new Vec2d(relativePos.dotProduct(xAxis) / size, relativePos.dotProduct(zAxis) / size);
+  }
+
+  private boolean isPointingAtGrid() {
+    return Math.abs(pointingLocalPos.x) < 1 && Math.abs(pointingLocalPos.y) < 1;
   }
 }

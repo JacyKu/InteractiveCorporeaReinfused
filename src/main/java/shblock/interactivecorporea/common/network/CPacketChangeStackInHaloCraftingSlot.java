@@ -78,6 +78,8 @@ public class CPacketChangeStackInHaloCraftingSlot {
           player.level().addFreshEntity(ie);
         }
       }
+
+      CPacketRequestItemListUpdate.broadcastRemoteState(player, halo);
     });
     ctx.get().setPacketHandled(true);
   }

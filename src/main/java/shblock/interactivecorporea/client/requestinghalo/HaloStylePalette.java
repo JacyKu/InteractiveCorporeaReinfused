@@ -3,11 +3,11 @@ package shblock.interactivecorporea.client.requestinghalo;
 import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
 import shblock.interactivecorporea.common.util.MathUtil;
 
-final class HaloStylePalette {
+public final class HaloStylePalette {
   private HaloStylePalette() {
   }
 
-  static float[] primary(HaloInterfaceStyle style, double phase) {
+  public static float[] primary(HaloInterfaceStyle style, double phase) {
     return switch (style) {
       case MANA -> color(.528F + wave(phase) * .018F, .48F, 1F);
       case CORPOREA -> color(.77F + wave(phase + .35D) * .025F, .62F, .96F);
@@ -28,7 +28,7 @@ final class HaloStylePalette {
     };
   }
 
-  static float[] secondary(HaloInterfaceStyle style, double phase) {
+  public static float[] secondary(HaloInterfaceStyle style, double phase) {
     return switch (style) {
       case MANA -> color(.50F + wave(phase + .25D) * .015F, .28F, 1F);
       case CORPOREA -> color(.11F + wave(phase + .55D) * .025F, .82F, 1F);
@@ -49,7 +49,7 @@ final class HaloStylePalette {
     };
   }
 
-  static float[] accent(HaloInterfaceStyle style, double phase) {
+  public static float[] accent(HaloInterfaceStyle style, double phase) {
     return switch (style) {
       case MANA -> color(.56F + wave(phase) * .025F, .2F, 1F);
       case CORPOREA -> color(.08F + wave(phase + .7D) * .025F, .9F, 1F);
@@ -70,7 +70,7 @@ final class HaloStylePalette {
     };
   }
 
-  static float[] particle(HaloInterfaceStyle style, double phase) {
+  public static float[] particle(HaloInterfaceStyle style, double phase) {
     return switch (style) {
       case MANA -> blend(primary(style, phase), color(.55F, .12F, 1F), pulse(phase + .15D));
       case CORPOREA -> blend(primary(style, phase), accent(style, phase + .35D), pulse(phase + .45D));
@@ -91,7 +91,7 @@ final class HaloStylePalette {
     };
   }
 
-  static float[] tint(float[] color, float[] tint, float strength, float lift) {
+  public static float[] tint(float[] color, float[] tint, float strength, float lift) {
     return new float[] {
         tintChannel(color[0], tint[0], strength, lift),
         tintChannel(color[1], tint[1], strength, lift),

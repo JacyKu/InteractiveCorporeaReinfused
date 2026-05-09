@@ -12,17 +12,22 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import shblock.interactivecorporea.client.requestinghalo.crafting.HaloCraftingInterface;
 import shblock.interactivecorporea.client.util.RenderTick;
 import shblock.interactivecorporea.common.item.HaloInterfaceStyle;
+import shblock.interactivecorporea.common.item.ModItems;
 import shblock.interactivecorporea.common.item.ItemRequestingHalo;
+import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.MathUtil;
 import shblock.interactivecorporea.common.util.Vec2d;
 
+import javax.annotation.Nullable;
 import java.util.List;
 
-public class RemoteRequestingHaloInterface {
+public final class RemoteRequestingHaloInterface {
 	private static final Minecraft mc = Minecraft.getInstance();
 	private static final MultiBufferSource.BufferSource TEXT_BUFFERS = MultiBufferSource.immediate(new BufferBuilder(64));
+	private static final double INITIAL_ROTATION = 0D;
 
 	private final int playerId;
 	private final AnimatedCorporeaItemList itemList;
@@ -34,9 +39,10 @@ public class RemoteRequestingHaloInterface {
 	private double openCloseProgress;
 
 	private double rotationOffset;
-	private double relativeRotation;
+	private double relativeRotation = INITIAL_ROTATION;
+	private double lastRelativeRotation = INITIAL_ROTATION;
 	private boolean hasSelection;
-	private Vec2d selectionPos = new Vec2d();
+	private final Vec2d selectionPos = new Vec2d();
 	private HaloInterfaceStyle interfaceStyle;
   private int haloTint;
 	private final double radius = 2F;
@@ -47,16 +53,17 @@ public class RemoteRequestingHaloInterface {
 
 	private boolean anchored = false;
 	private Vec3 anchoredWorldPos = null;
+	private boolean hasCraftingModule;
+	private HaloCraftingInterface craftingInterface;
 
-public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint) {
+public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint, boolean hasCraftingModule, List<ItemStack> craftingSlots, List<ItemStack> craftingShadowSlots) {
     this.playerId = playerId;
     this.rotationOffset = rotationOffset;
-    this.relativeRotation = 36F;
     this.interfaceStyle = interfaceStyle;
     this.haloTint = haloTint;
     this.itemList = new AnimatedCorporeaItemList(clampListHeight(listHeight));
     this.searchBar.setSearching(false);
-    update(rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint);
+		update(rotationOffset, listHeight, sortByAmount, itemList, interfaceStyle, haloTint, hasCraftingModule, craftingSlots, craftingShadowSlots);
 	}
 
 	public void startClose() {
@@ -65,7 +72,7 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 		closing = true;
 	}
 
-	public void update(float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint) {
+	public final void update(float rotationOffset, int listHeight, boolean sortByAmount, List<ItemStack> itemList, HaloInterfaceStyle interfaceStyle, int haloTint, boolean hasCraftingModule, List<ItemStack> craftingSlots, List<ItemStack> craftingShadowSlots) {
 		if (closing) {
 			closing = false;
 			opening = true;
@@ -73,6 +80,8 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 		this.rotationOffset = rotationOffset;
 		this.interfaceStyle = interfaceStyle;
 		this.haloTint = haloTint;
+		this.hasCraftingModule = hasCraftingModule;
+		rebuildCraftingInterface(interfaceStyle, haloTint, craftingSlots, craftingShadowSlots);
 		updateListHeight(listHeight);
 		if (sortByAmount) {
 			this.itemList.setSortMode(SortMode.AMOUNT);
@@ -87,6 +96,7 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 
 	public void updateView(float rotationOffset, float relativeRotation, int listHeight, boolean hasSelection, float selectionX, float selectionY, String searchString, boolean anchored, double anchoredX, double anchoredY, double anchoredZ) {
 		this.rotationOffset = rotationOffset;
+		this.lastRelativeRotation = this.relativeRotation;
 		this.relativeRotation = relativeRotation;
 		this.hasSelection = hasSelection;
 		this.selectionPos.set(selectionX, selectionY);
@@ -115,6 +125,9 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 
 		renderHaloBody(poseStack);
 		renderItems(poseStack);
+		if (hasCraftingModule && craftingInterface != null) {
+			renderCrafting(poseStack);
+		}
 
 		if (!searchBar.getSearchString().isEmpty()) {
 			renderSearchBar(poseStack);
@@ -127,13 +140,18 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 
 	public void tick() {
 		itemList.tick();
+		if (craftingInterface != null) {
+			craftingInterface.tick(null);
+		}
 	}
 
+	@Nullable
 	private Player getPlayer() {
-		if (mc.level == null) {
+		var level = mc.level;
+		if (level == null) {
 			return null;
 		}
-		Entity entity = mc.level.getEntity(playerId);
+		Entity entity = level.getEntity(playerId);
 		return entity instanceof Player player ? player : null;
 	}
 
@@ -243,6 +261,22 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 		poseStack.pop();
 	}
 
+	private void renderCrafting(MatrixStack poseStack) {
+		double size = .5D;
+		craftingInterface.setSize(size);
+		craftingInterface.setPos(MathUtil.calcChordCenterDistance(radius, size * 2D) - size - .1D);
+
+		if (hasCraftingRotationBucketChanged()) {
+			craftingInterface.setTargetRotation(Math.toRadians(getCraftingRotationDegrees()));
+		}
+
+		poseStack.push();
+		poseStack.translate(0, -height, 0);
+		poseStack.rotate(Vector3f.YP.rotationDegrees((float) -rotationOffset));
+		craftingInterface.render(poseStack, Math.sin(openCloseProgress * Math.PI / 2F));
+		poseStack.pop();
+	}
+
 	private boolean updateSelectionBox(AnimatedItemStack animatedStack) {
 		if (!hasSelection || animatedStack.isRemoved()) {
 			return false;
@@ -278,6 +312,42 @@ public RemoteRequestingHaloInterface(int playerId, float rotationOffset, int lis
 
 	private static int clampListHeight(int listHeight) {
 		return Math.max(1, Math.min(16, listHeight));
+	}
+
+	private double getCraftingRotationDegrees() {
+		double lockingRotation = 90D;
+		double relPlus = relativeRotation - INITIAL_ROTATION;
+		double lastRelPlus = lastRelativeRotation - INITIAL_ROTATION;
+		double relRot = Math.max(relPlus, lastRelPlus);
+		return Math.floor(relRot / lockingRotation) * lockingRotation + INITIAL_ROTATION;
+	}
+
+	private boolean hasCraftingRotationBucketChanged() {
+		double lockingRotation = 90D;
+		double relPlus = relativeRotation - INITIAL_ROTATION;
+		double lastRelPlus = lastRelativeRotation - INITIAL_ROTATION;
+		return Math.floor(relPlus / lockingRotation) != Math.floor(lastRelPlus / lockingRotation);
+	}
+
+	private void rebuildCraftingInterface(HaloInterfaceStyle interfaceStyle, int haloTint, List<ItemStack> craftingSlots, List<ItemStack> craftingShadowSlots) {
+		if (!hasCraftingModule) {
+			craftingInterface = null;
+			return;
+		}
+
+		ItemStack remoteHalo = new ItemStack(ModItems.requestingHalo);
+		ItemRequestingHalo.setInterfaceStyle(remoteHalo, interfaceStyle);
+		ItemRequestingHalo.setHaloTintPacked(remoteHalo, haloTint);
+		for (int i = 0; i < 9; i++) {
+			ItemRequestingHalo.setStackInCraftingSlot(remoteHalo, i, i < craftingSlots.size() ? craftingSlots.get(i) : ItemStack.EMPTY);
+			ItemRequestingHalo.setShadowStackInCraftingSlot(remoteHalo, i, i < craftingShadowSlots.size() ? craftingShadowSlots.get(i) : ItemStack.EMPTY);
+		}
+
+		HaloCraftingInterface remoteCrafting = new HaloCraftingInterface(new CISlotPointer(0), remoteHalo);
+		remoteCrafting.snapRotation(Math.toRadians(getCraftingRotationDegrees()));
+		remoteCrafting.setShowCraftButton(false);
+		remoteCrafting.updateRecipe();
+		craftingInterface = remoteCrafting;
 	}
 
 	private boolean updateOpenClose() {

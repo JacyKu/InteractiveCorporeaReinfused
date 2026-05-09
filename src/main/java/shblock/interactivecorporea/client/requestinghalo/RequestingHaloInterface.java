@@ -10,6 +10,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.*;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.world.entity.player.Player;
@@ -92,12 +93,17 @@ public class RequestingHaloInterface {
   private int tick = 0;
 
   private static final double INITIAL_ROTATION = 0;
+  private static final double ANCHOR_RETURN_DURATION_TICKS = 20D;
+  private static final double ANCHOR_RETURN_SNAP_DISTANCE_SQ = 0.0025D;
   private double rotationOffset;
   private double relativeRotation = INITIAL_ROTATION;
   private double lastRelativeRotation = INITIAL_ROTATION;
 
   private boolean anchored = false;
   private Vector3d anchoredWorldPos = null;
+  private Vector3d anchorReturnStartWorldPos = null;
+  private Vector3d returningWorldPos = null;
+  private double anchorReturnProgress = 0D;
 
   private double radius = 2F;
   private double height = 1F;
@@ -159,6 +165,7 @@ public class RequestingHaloInterface {
       return false;
     }
 
+    updateAnchorReturn((float) pt);
     handleRotation();
 
     MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
@@ -169,9 +176,7 @@ public class RequestingHaloInterface {
 
     ms.push();
 
-    Player player = mc.player;
-    Vector3d eyePos = new Vector3d(player.getEyePosition((float) pt));
-    Vector3d haloCenter = anchored && anchoredWorldPos != null ? anchoredWorldPos : eyePos;
+    Vector3d haloCenter = getHaloCenter((float) pt);
 
     ms.translate(haloCenter.x - renderPosX, haloCenter.y - renderPosY, haloCenter.z - renderPosZ);
 
@@ -347,11 +352,25 @@ public class RequestingHaloInterface {
       }
     }
 
-    Vector3 lookDir = new Vector3(Vector3d.fromPitchYaw(mc.player.getXRot(), mc.player.getYRot()));
-    bottomIntersect = MathUtil.rayPlaneIntersection(
-        new Ray3(new Vector3(0, 0, 0), lookDir),
-        new Ray3(new Vector3(0, -height, 0), new Vector3(0, 1, 0))
+    Vector3d haloCenter = getHaloCenter();
+    Vector3d eyePos = new Vector3d(mc.player.getEyePosition((float) RenderTick.pt));
+    Vector3 eyeOffsetFromHalo = new Vector3(
+      eyePos.x - haloCenter.x,
+      eyePos.y - haloCenter.y,
+      eyePos.z - haloCenter.z
     );
+    Vector3 lookDir = new Vector3(Vector3d.fromPitchYaw(mc.player.getXRot(), mc.player.getYRot()));
+    Vector3 eyeOffsetCraftFrame = eyeOffsetFromHalo
+      .add(0, height, 0)
+      .rotate(Math.toRadians(rotationOffset), new Vector3(0, 1, 0));
+    Vector3 lookDirCraftFrame = lookDir.rotate(Math.toRadians(rotationOffset), new Vector3(0, 1, 0));
+    Vector3 craftingIntersect = MathUtil.rayPlaneIntersection(
+      new Ray3(eyeOffsetCraftFrame, lookDirCraftFrame),
+      new Ray3(craftingInterface.getInteractionPlanePoint(), craftingInterface.getInteractionPlaneNormal())
+    );
+    bottomIntersect = craftingIntersect == null
+      ? null
+      : craftingIntersect.rotate(Math.toRadians(-rotationOffset), new Vector3(0, 1, 0)).add(0, -height, 0);
     if (pickedItem != null) {
       if (bottomIntersect != null && new Vector3(bottomIntersect.x, 0, bottomIntersect.z).mag() < radius * .94) {
         shouldPickedItemFadeWhenLookUp = true;
@@ -372,7 +391,7 @@ public class RequestingHaloInterface {
     }
     fadingPickedItems.forEach(HaloPickedItem::tick);
 
-    craftingInterface.tick(bottomIntersect != null ? new Vec2d(bottomIntersect.rotate(Math.toRadians(rotationOffset), new Vector3(0, 1, 0))) : null);
+    craftingInterface.tick(craftingIntersect);
 
     tick++;
   }
@@ -528,8 +547,43 @@ public class RequestingHaloInterface {
   }
 
   private Vector3d getHaloCenter() {
+    return getHaloCenter((float) RenderTick.pt);
+  }
+
+  private Vector3d getHaloCenter(float pt) {
     if (anchored && anchoredWorldPos != null) return anchoredWorldPos;
-    return new Vector3d(mc.player.getEyePosition((float) RenderTick.pt));
+    if (returningWorldPos != null) return returningWorldPos;
+    return new Vector3d(mc.player.getEyePosition(pt));
+  }
+
+  private void updateAnchorReturn(float pt) {
+    if (anchored || returningWorldPos == null) return;
+    if (anchorReturnStartWorldPos == null) {
+      returningWorldPos = null;
+      return;
+    }
+
+    Vector3d eyePos = new Vector3d(mc.player.getEyePosition(pt));
+    anchorReturnProgress += RenderTick.delta / ANCHOR_RETURN_DURATION_TICKS;
+    double amount = smoothstep(MathHelper.clamp(anchorReturnProgress, 0D, 1D));
+    returningWorldPos = new Vector3d(
+        MathHelper.lerp(amount, anchorReturnStartWorldPos.x, eyePos.x),
+        MathHelper.lerp(amount, anchorReturnStartWorldPos.y, eyePos.y),
+        MathHelper.lerp(amount, anchorReturnStartWorldPos.z, eyePos.z)
+    );
+
+    double dx = returningWorldPos.x - eyePos.x;
+    double dy = returningWorldPos.y - eyePos.y;
+    double dz = returningWorldPos.z - eyePos.z;
+    if (anchorReturnProgress >= 1D || dx * dx + dy * dy + dz * dz <= ANCHOR_RETURN_SNAP_DISTANCE_SQ) {
+      anchorReturnStartWorldPos = null;
+      returningWorldPos = null;
+      anchorReturnProgress = 0D;
+    }
+  }
+
+  private static double smoothstep(double amount) {
+    return amount * amount * (3D - 2D * amount);
   }
 
   public boolean isAnchored() {
@@ -540,19 +594,44 @@ public class RequestingHaloInterface {
     if (!isModuleInstalled(HaloModule.ANCHOR)) return;
     anchored = !anchored;
     if (anchored) {
+      anchorReturnStartWorldPos = null;
+      returningWorldPos = null;
+      anchorReturnProgress = 0D;
       anchoredWorldPos = new Vector3d(mc.player.getEyePosition(1.0f));
       if (ModList.get().isLoaded("sodiumdynamiclights")) {
         DynamicLightsCompat.activateAnchorLight(anchoredWorldPos.x, anchoredWorldPos.y, anchoredWorldPos.z);
       }
     } else {
+      double playerRot = mc.player.getYRot();
+      anchorReturnStartWorldPos = anchoredWorldPos;
+      returningWorldPos = anchoredWorldPos;
+      anchorReturnProgress = 0D;
+      playImmediateSound(ModSounds.haloReturn, .5F, 1F);
       anchoredWorldPos = null;
-      relativeRotation = mc.player.getYRot() - rotationOffset;
-      prevPlayerRot = mc.player.getYRot();
+      rotationOffset = normalizeDegrees(playerRot - INITIAL_ROTATION);
+      relativeRotation = INITIAL_ROTATION;
+      lastRelativeRotation = INITIAL_ROTATION;
+      prevPlayerRot = playerRot;
+      rotationToAdd = 0;
+      rotationAddingSpeed = 0;
       if (ModList.get().isLoaded("sodiumdynamiclights")) {
         DynamicLightsCompat.deactivateAnchorLight();
       }
     }
-    playSound(ModSounds.haloSelect, .5F, anchored ? 0.8F : 1.2F);
+    if (anchored) {
+      playSound(ModSounds.haloSelect, .5F, 0.8F);
+    }
+  }
+
+  private static double normalizeDegrees(double degrees) {
+    double normalized = degrees % 360D;
+    if (normalized >= 180D) {
+      normalized -= 360D;
+    }
+    if (normalized < -180D) {
+      normalized += 360D;
+    }
+    return normalized;
   }
 
   /**
@@ -568,11 +647,10 @@ public class RequestingHaloInterface {
     double py = eyePos.y - anchoredWorldPos.y;
     double pz = eyePos.z - anchoredWorldPos.z;
 
-    double pitchRad = Math.toRadians(mc.player.getXRot());
-    double yawRad   = Math.toRadians(mc.player.getYRot());
-    double dx = -Math.sin(yawRad) * Math.cos(pitchRad);
-    double dy = -Math.sin(pitchRad);
-    double dz =  Math.cos(yawRad) * Math.cos(pitchRad);
+    Vector3d lookDir = Vector3d.fromPitchYaw(mc.player.getXRot(), mc.player.getYRot());
+    double dx = lookDir.x;
+    double dy = lookDir.y;
+    double dz = lookDir.z;
 
     double a = dx * dx + dz * dz;
     if (a < 1e-10) {
@@ -587,30 +665,67 @@ public class RequestingHaloInterface {
     double sqrtDisc = Math.sqrt(disc);
     double t1 = (-b - sqrtDisc) / (2.0 * a);
     double t2 = (-b + sqrtDisc) / (2.0 * a);
-    double t;
-    if (t1 > 0) {
-      t = t1;
-    } else if (t2 > 0) {
-      t = t2;
-    } else {
+    Vec2d lookingPos1 = calcAnchoredLookingPosForIntersection(px, py, pz, dx, dy, dz, t1);
+    Vec2d lookingPos2 = calcAnchoredLookingPosForIntersection(px, py, pz, dx, dy, dz, t2);
+    if (lookingPos1 == null && lookingPos2 == null) {
       return calcLookingPos(radius, itemSpacing, itemRotSpacing, itemList.getColumnOffset());
+    }
+    if (lookingPos1 == null) {
+      return lookingPos2;
+    }
+    if (lookingPos2 == null) {
+      return lookingPos1;
+    }
+
+    double distance1 = getAnchoredLookingPosDistanceSq(lookingPos1);
+    double distance2 = getAnchoredLookingPosDistanceSq(lookingPos2);
+    if (distance1 == distance2) {
+      return t1 <= t2 ? lookingPos1 : lookingPos2;
+    }
+    return distance1 < distance2 ? lookingPos1 : lookingPos2;
+  }
+
+  private Vec2d calcAnchoredLookingPosForIntersection(double px, double py, double pz, double dx, double dy, double dz, double t) {
+    if (t <= 0) {
+      return null;
     }
 
     double hx = px + t * dx;
     double hy = py + t * dy;
     double hz = pz + t * dz;
-
-    // Map hit angle to column.
-    // Items at column c are at world direction yaw = rotationOffset + (c-colOffset)*rotSpacing_deg,
-    // which maps to atan2 angle = -toRadians(rotationOffset + (c-colOffset)*rotSpacing_deg).
-    // Solving for c: c = colOffset - (hitAngle + toRadians(rotationOffset)) / itemRotSpacing
-    double hitAngle = Math.atan2(hx, hz);
-    double col = itemList.getColumnOffset() - (hitAngle + Math.toRadians(rotationOffset)) / itemRotSpacing;
-
-    // Map hit height to row: item at row r is at y = -(r - (height-1)/2) * spacing
     double row = (itemList.getHeight() - 1.0) / 2.0 - hy / itemSpacing;
+    double baseHitAngle = Math.atan2(hx, hz);
 
-    return new Vec2d(col, row);
+    Vec2d bestLookingPos = null;
+    double bestDistanceSq = Double.POSITIVE_INFINITY;
+    for (int angleWrap = -1; angleWrap <= 1; angleWrap++) {
+      double hitAngle = baseHitAngle + angleWrap * Math.PI * 2D;
+      double col = itemList.getColumnOffset() - (hitAngle + Math.toRadians(rotationOffset)) / itemRotSpacing;
+      Vec2d candidate = new Vec2d(col, row);
+      double distanceSq = getAnchoredLookingPosDistanceSq(candidate);
+      if (distanceSq < bestDistanceSq) {
+        bestDistanceSq = distanceSq;
+        bestLookingPos = candidate;
+      }
+    }
+    return bestLookingPos;
+  }
+
+  private double getAnchoredLookingPosDistanceSq(Vec2d lookingPos) {
+    double bestDistanceSq = Double.POSITIVE_INFINITY;
+    for (AnimatedItemStack stack : itemList.getAnimatedList()) {
+      if (stack.isRemoved()) {
+        continue;
+      }
+      Vec2d itemPos = stack.getPos();
+      double dx = lookingPos.x - itemPos.x;
+      double dy = lookingPos.y - itemPos.y;
+      double distanceSq = dx * dx + dy * dy;
+      if (distanceSq < bestDistanceSq) {
+        bestDistanceSq = distanceSq;
+      }
+    }
+    return bestDistanceSq;
   }
 
   /**
@@ -789,12 +904,25 @@ public class RequestingHaloInterface {
     if (isOpenClose()) return false;
 
     Vector3 intersectWorldPos = null;
-    if (bottomIntersect != null)
-      intersectWorldPos = bottomIntersect.add(new Vector3(mc.player.getEyePosition((float) RenderTick.pt)));
+    if (bottomIntersect != null) {
+      Vector3d haloCenter = getHaloCenter();
+      intersectWorldPos = bottomIntersect.add(new Vector3(haloCenter.x, haloCenter.y, haloCenter.z));
+    }
     if (action == GLFW_PRESS) {
       switch (button) {
         case GLFW_MOUSE_BUTTON_LEFT:
+          if (pickedItem != null) {
+            pickItem(true);
+            return true;
+          }
           if (mc.screen != null) return false;
+          if (craftingInterface != null && craftingInterface.isPointingAtCraftButton()) {
+            boolean crafted = craftingInterface.doCraft();
+            if (crafted) {
+              playSwingAnimation();
+            }
+            return true;
+          }
           if (requestItem())
             return true;
           if (craftingInterface != null) {
@@ -941,8 +1069,10 @@ public class RequestingHaloInterface {
         if (slot != -1) {
           ItemStack stackUnderMouse = RequestingHaloInterfaceHandler.getUnderMouseItemStack();
           if (!stackUnderMouse.isEmpty()) {
-            craftingInterface.getPointingSlot().setShadowStack(stackUnderMouse);
-            return;
+            if (craftingInterface.tryPlaceShadowItem(slot, stackUnderMouse)) {
+              craftingInterface.updateRecipe();
+              return;
+            }
           }
         }
       }
@@ -1027,6 +1157,14 @@ public class RequestingHaloInterface {
 
   public void playSound(double x, double y, double z, SoundEvent sound, float pitch) {
     playSound(x, y, z, sound, 1F, pitch);
+  }
+
+  public void playImmediateSound(SoundEvent sound, float volume, float pitch) {
+    float scaledVolume = ModConfig.scaleSoundVolume(sound, volume);
+    if (scaledVolume <= 0F) {
+      return;
+    }
+    mc.getSoundManager().play(SimpleSoundInstance.forUI(sound, scaledVolume, pitch));
   }
 
   public void playSound(SoundEvent sound, float volume, float pitch) {

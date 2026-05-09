@@ -64,11 +64,9 @@ public class CraftingInterfaceSlot {
     float size = (float) (mouseOverFactor * .05 + SIZE);
     ms.scale(size, size, size);
 
-    float r = .97F;
-    float g = 0F;
-    float b = .98F;
-    float a = (float) (mouseOverFactor * .3 + .6);
-    renderBg(ms, r, g, b, a);
+    float[] slotColor = craftingInterface.getSlotColor((float) mouseOverFactor);
+    float a = (float) (mouseOverFactor * .18 + .42);
+    renderBg(ms, slotColor[0], slotColor[1], slotColor[2], a);
 
     ms.translate(0, .01, 0);
 

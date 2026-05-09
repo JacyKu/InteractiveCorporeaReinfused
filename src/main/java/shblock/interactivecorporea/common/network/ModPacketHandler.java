@@ -12,7 +12,7 @@ import shblock.interactivecorporea.IC;
 import java.util.Optional;
 
 public class ModPacketHandler {
-  private static final String PROTOCOL_VERSION = "2";
+  private static final String PROTOCOL_VERSION = "4";
   public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
       new ResourceLocation(IC.MODID, "main"),
       () -> PROTOCOL_VERSION,
@@ -28,6 +28,7 @@ public class ModPacketHandler {
     CHANNEL.registerMessage(id++, SPacketPlayQuantizationEffect.class, SPacketPlayQuantizationEffect::encode, SPacketPlayQuantizationEffect::decode, SPacketPlayQuantizationEffect::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     CHANNEL.registerMessage(id++, SPacketRequestResult.class, SPacketRequestResult::encode, SPacketRequestResult::decode, SPacketRequestResult::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     CHANNEL.registerMessage(id++, CPacketChangeStackInHaloCraftingSlot.class, CPacketChangeStackInHaloCraftingSlot::encode, CPacketChangeStackInHaloCraftingSlot::decode, CPacketChangeStackInHaloCraftingSlot::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+    CHANNEL.registerMessage(id++, CPacketSetHaloCraftingShadowSlot.class, CPacketSetHaloCraftingShadowSlot::encode, CPacketSetHaloCraftingShadowSlot::decode, CPacketSetHaloCraftingShadowSlot::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     CHANNEL.registerMessage(id++, CPacketDoCraft.class, CPacketDoCraft::encode, CPacketDoCraft::decode, CPacketDoCraft::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     CHANNEL.registerMessage(id++, SPacketCraftingState.class, SPacketCraftingState::encode, SPacketCraftingState::decode, SPacketCraftingState::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     CHANNEL.registerMessage(id++, CPacketInsertDroppedItem.class, CPacketInsertDroppedItem::encode, CPacketInsertDroppedItem::decode, CPacketInsertDroppedItem::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));

@@ -70,17 +70,17 @@ public final class ModConfig {
     public final ForgeConfigSpec.BooleanValue enableSearchModule;
     public final ForgeConfigSpec.BooleanValue enableUpdateModule;
     public final ForgeConfigSpec.BooleanValue enableAnchorModule;
-    public final ForgeConfigSpec.BooleanValue enableMagnateModule;
+    public final ForgeConfigSpec.BooleanValue enableMagnetizationModule;
     public final ForgeConfigSpec.BooleanValue enableCraftingModule;
     public final ForgeConfigSpec.BooleanValue enableQuantumInserterModule;
     public final ForgeConfigSpec.BooleanValue enableFarReachModule;
-    public final ForgeConfigSpec.BooleanValue enableGreaterMagnateModule;
+    public final ForgeConfigSpec.BooleanValue enableGreaterMagnetizationModule;
     public final ForgeConfigSpec.BooleanValue enableBlackHoleModule;
 
     public final ForgeConfigSpec.IntValue baseRequestingHaloRange;
-    public final ForgeConfigSpec.IntValue magnateRangeBonus;
+    public final ForgeConfigSpec.IntValue magnetizationRangeBonus;
     public final ForgeConfigSpec.IntValue farReachRangeBonus;
-    public final ForgeConfigSpec.IntValue greaterMagnateRangeBonus;
+    public final ForgeConfigSpec.IntValue greaterMagnetizationRangeBonus;
     public final ForgeConfigSpec.IntValue blackHoleRangeBonus;
 
     public final ForgeConfigSpec.BooleanValue enableParticles;
@@ -91,6 +91,7 @@ public final class ModConfig {
     public final ForgeConfigSpec.DoubleValue haloListUpdateSoundScale;
     public final ForgeConfigSpec.DoubleValue haloSelectSoundScale;
     public final ForgeConfigSpec.DoubleValue haloRequestSoundScale;
+    public final ForgeConfigSpec.DoubleValue haloReturnSoundScale;
     public final ForgeConfigSpec.DoubleValue haloReachEdgeSoundScale;
     public final ForgeConfigSpec.DoubleValue haloOutOfRangeSoundScale;
     public final ForgeConfigSpec.DoubleValue quantumSendSoundScale;
@@ -127,11 +128,11 @@ public final class ModConfig {
       enableSearchModule = defineModuleToggle(builder, "enableSearchModule", "Enable the SEARCH Requesting Halo module");
       enableUpdateModule = defineModuleToggle(builder, "enableUpdateModule", "Enable the UPDATE Requesting Halo module");
       enableAnchorModule = defineModuleToggle(builder, "enableAnchorModule", "Enable the ANCHOR Requesting Halo module");
-      enableMagnateModule = defineModuleToggle(builder, "enableMagnateModule", "Enable the MAGNATE Requesting Halo module");
+      enableMagnetizationModule = defineModuleToggle(builder, "enableMagnetizationModule", "Enable the MAGNETIZATION Requesting Halo module");
       enableCraftingModule = defineModuleToggle(builder, "enableCraftingModule", "Enable the CRAFTING Requesting Halo module");
       enableQuantumInserterModule = defineModuleToggle(builder, "enableQuantumInserterModule", "Enable the QUANTUM_INSERTER Requesting Halo module");
       enableFarReachModule = defineModuleToggle(builder, "enableFarReachModule", "Enable the FAR_REACH Requesting Halo module");
-      enableGreaterMagnateModule = defineModuleToggle(builder, "enableGreaterMagnateModule", "Enable the GREATER_MAGNATE Requesting Halo module");
+      enableGreaterMagnetizationModule = defineModuleToggle(builder, "enableGreaterMagnetizationModule", "Enable the GREATER_MAGNETIZATION Requesting Halo module");
       enableBlackHoleModule = defineModuleToggle(builder, "enableBlackHoleModule", "Enable the BLACK_HOLE Requesting Halo module");
       builder.pop();
 
@@ -139,15 +140,15 @@ public final class ModConfig {
       baseRequestingHaloRange = builder
           .comment("Base Corporea access range of the Requesting Halo before range upgrades")
           .defineInRange("baseRequestingHaloRange", 10, 0, Integer.MAX_VALUE);
-      magnateRangeBonus = builder
-          .comment("Range bonus provided by the MAGNATE module when it is enabled")
-          .defineInRange("magnateRangeBonus", 10, 0, Integer.MAX_VALUE);
+        magnetizationRangeBonus = builder
+          .comment("Range bonus provided by the MAGNETIZATION module when it is enabled")
+          .defineInRange("magnetizationRangeBonus", 10, 0, Integer.MAX_VALUE);
       farReachRangeBonus = builder
           .comment("Range bonus provided by the FAR_REACH module when it is enabled")
           .defineInRange("farReachRangeBonus", 20, 0, Integer.MAX_VALUE);
-      greaterMagnateRangeBonus = builder
-          .comment("Range bonus provided by the GREATER_MAGNATE module when it is enabled")
-          .defineInRange("greaterMagnateRangeBonus", 30, 0, Integer.MAX_VALUE);
+        greaterMagnetizationRangeBonus = builder
+          .comment("Range bonus provided by the GREATER_MAGNETIZATION module when it is enabled")
+          .defineInRange("greaterMagnetizationRangeBonus", 30, 0, Integer.MAX_VALUE);
       blackHoleRangeBonus = builder
           .comment("Range bonus provided by the BLACK_HOLE module when it is enabled")
           .defineInRange("blackHoleRangeBonus", 50, 0, Integer.MAX_VALUE);
@@ -168,6 +169,7 @@ public final class ModConfig {
       haloListUpdateSoundScale = defineSoundScale(builder, "haloListUpdateSoundScale", "Scale applied to halo list update sounds");
       haloSelectSoundScale = defineSoundScale(builder, "haloSelectSoundScale", "Scale applied to halo select sounds");
       haloRequestSoundScale = defineSoundScale(builder, "haloRequestSoundScale", "Scale applied to halo request sounds");
+      haloReturnSoundScale = defineSoundScale(builder, "haloReturnSoundScale", "Scale applied to halo return sounds");
       haloReachEdgeSoundScale = defineSoundScale(builder, "haloReachEdgeSoundScale", "Scale applied to halo reach-edge sounds");
       haloOutOfRangeSoundScale = defineSoundScale(builder, "haloOutOfRangeSoundScale", "Scale applied to halo out-of-range sounds");
       quantumSendSoundScale = defineSoundScale(builder, "quantumSendSoundScale", "Scale applied to quantum send sounds");
@@ -194,20 +196,20 @@ public final class ModConfig {
         case SEARCH -> enableSearchModule.get();
         case UPDATE -> enableUpdateModule.get();
         case ANCHOR -> enableAnchorModule.get();
-        case MAGNATE -> enableMagnateModule.get();
+        case MAGNETIZATION -> enableMagnetizationModule.get();
         case CRAFTING -> enableCraftingModule.get();
         case QUANTUM_INSERTER -> enableQuantumInserterModule.get();
         case FAR_REACH -> enableFarReachModule.get();
-        case GREATER_MAGNATE -> enableGreaterMagnateModule.get();
+        case GREATER_MAGNETIZATION -> enableGreaterMagnetizationModule.get();
         case BLACK_HOLE -> enableBlackHoleModule.get();
       };
     }
 
     public int getRangeBonus(HaloModule module) {
       return switch (module) {
-        case MAGNATE -> magnateRangeBonus.get();
+        case MAGNETIZATION -> magnetizationRangeBonus.get();
         case FAR_REACH -> farReachRangeBonus.get();
-        case GREATER_MAGNATE -> greaterMagnateRangeBonus.get();
+        case GREATER_MAGNETIZATION -> greaterMagnetizationRangeBonus.get();
         case BLACK_HOLE -> blackHoleRangeBonus.get();
         default -> module.rangeBonus;
       };
@@ -219,6 +221,7 @@ public final class ModConfig {
       if (sound == ModSounds.haloListUpdate) return haloListUpdateSoundScale.get();
       if (sound == ModSounds.haloSelect) return haloSelectSoundScale.get();
       if (sound == ModSounds.haloRequest) return haloRequestSoundScale.get();
+      if (sound == ModSounds.haloReturn) return haloReturnSoundScale.get();
       if (sound == ModSounds.haloReachEdge) return haloReachEdgeSoundScale.get();
       if (sound == ModSounds.haloOutOfRange) return haloOutOfRangeSoundScale.get();
       if (sound == ModSounds.quantumSend) return quantumSendSoundScale.get();

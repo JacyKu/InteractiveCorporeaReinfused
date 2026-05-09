@@ -71,10 +71,10 @@ public class HaloAttractServerHandler {
   }
 
   /**
-   * @return if the item was attracted (if the halo has the magnate module)
+   * @return if the item was attracted (if the halo has the magnetization module)
    */
   public static boolean attractIfHasModule(Player player, ItemEntity item, ItemStack halo) {
-    if (ItemRequestingHalo.isModuleInstalled(halo, HaloModule.MAGNATE)) {
+    if (ItemRequestingHalo.isModuleInstalled(halo, HaloModule.MAGNETIZATION)) {
       addToAttractedItems(player, item);
       return true;
     } else {

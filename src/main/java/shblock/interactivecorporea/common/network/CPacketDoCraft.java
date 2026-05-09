@@ -2,6 +2,7 @@ package shblock.interactivecorporea.common.network;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
+import shblock.interactivecorporea.common.requestinghalo.HaloCraftingServerHandler;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.NetworkHelper;
 
@@ -30,7 +31,10 @@ public class CPacketDoCraft {
 
   public void handle(Supplier<NetworkEvent.Context> ctx) {
     ctx.get().enqueueWork(() -> {
-
+      if (ctx.get().getSender() == null) {
+        return;
+      }
+      HaloCraftingServerHandler.doCraft(ctx.get().getSender(), haloSlot, requestId);
     });
     ctx.get().setPacketHandled(true);
   }
