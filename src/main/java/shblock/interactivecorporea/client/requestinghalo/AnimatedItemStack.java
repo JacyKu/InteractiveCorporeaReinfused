@@ -47,6 +47,7 @@ public class AnimatedItemStack {
   private final List<RequestResultAnimation> requestResultAnimations = new ArrayList<>();
 
   private boolean isNew = true;
+  private boolean isFavorite = false;
 
   public AnimatedItemStack(ItemStack stack) {
     this.stack = stack;
@@ -94,6 +95,14 @@ public class AnimatedItemStack {
 
   private double calcSpeed(double current, double dest, double prevSpd) {
     return MathUtil.smoothMovingSpeed(current, dest, prevSpd, .05, .5, .01);
+  }
+
+  public void setFavorite(boolean favorite) {
+    this.isFavorite = favorite;
+  }
+
+  public boolean isFavorite() {
+    return isFavorite;
   }
 
   public void renderItem(MatrixStack ms) {

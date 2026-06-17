@@ -186,11 +186,11 @@ public class RequestingHaloInterfaceHandler {
   }
 
   /**
-   * Check if the ItemStack in the slot of current opened interface is still the original one (If the halo item has not been changed)
+   * Check if the ItemStack in the slot of current opened interface is still a RequestingHalo item
    */
   public static boolean slotStillValid() {
     ItemStack currentStack = getInterface().getSlot().getStack(mc.player);
-    return ItemStack.isSameItemSameTags(currentStack, getInterface().getHaloItem());
+    return !currentStack.isEmpty() && currentStack.getItem() instanceof ItemRequestingHalo;
   }
 
   public static void handleUpdatePacket(List<ItemStack> itemList) {
@@ -392,6 +392,7 @@ public class RequestingHaloInterfaceHandler {
   }
 
   public static Supplier<ItemStack> jeiUnderMouseGetter = () -> null;
+  public static Supplier<List<ItemStack>> favoritesSupplier = null;
 
   public static ItemStack getUnderMouseItemStack() {
     Screen screen = mc.screen;

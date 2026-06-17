@@ -7,8 +7,11 @@ import shblock.interactivecorporea.common.util.Vec2i;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class AnimatedCorporeaItemList {
@@ -23,6 +26,8 @@ public class AnimatedCorporeaItemList {
 
   private boolean isFirstUpdate = true;
   private int numColumns = 1;
+  private Supplier<List<ItemStack>> favoritesSupplier = null;
+  private final Set<ItemKey> favoriteKeys = new HashSet<>();
 
   public AnimatedCorporeaItemList(int height) {
     this.height = height;
@@ -42,9 +47,68 @@ public class AnimatedCorporeaItemList {
     }
   }
 
+  public void setFavoritesSupplier(Supplier<List<ItemStack>> supplier) {
+    this.favoritesSupplier = supplier;
+  }
+
+  public void showInitialFavorites() {
+    if (favoritesSupplier != null) {
+      stackList = mergeFavorites(List.of());
+      arrange(true);
+    }
+  }
+
+  public void refreshFavorites() {
+    if (stackList != null) {
+      handleUpdatePacket(stackList);
+    }
+  }
+
   public void handleUpdatePacket(List<ItemStack> itemList) {
-    stackList = itemList;
+    stackList = mergeFavorites(itemList);
     arrange(isFirstUpdate);
+  }
+
+  private List<ItemStack> mergeFavorites(List<ItemStack> source) {
+    favoriteKeys.clear();
+    if (favoritesSupplier == null) return source;
+    List<ItemStack> favs = favoritesSupplier.get();
+    if (favs == null || favs.isEmpty()) return source;
+
+    Set<ItemKey> sourceKeys = new HashSet<>();
+    for (ItemStack s : source) {
+      sourceKeys.add(new ItemKey(s));
+    }
+
+    List<ItemStack> merged = new ArrayList<>(source);
+    for (ItemStack fav : favs) {
+      ItemKey key = new ItemKey(fav);
+      favoriteKeys.add(key);
+      if (!sourceKeys.contains(key)) {
+        ItemStack copy = fav.copy();
+        copy.setCount(0);
+        merged.add(copy);
+      }
+    }
+    return merged;
+  }
+
+  private static class ItemKey {
+    private final ItemStack stack;
+    ItemKey(ItemStack s) { this.stack = s; }
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof ItemKey)) return false;
+      return StackHelper.equalItemAndTag(stack, ((ItemKey) o).stack);
+    }
+    @Override
+    public int hashCode() {
+      int result = stack.getItem().hashCode();
+      if (stack.hasTag()) {
+        result = 31 * result + stack.getTag().hashCode();
+      }
+      return result;
+    }
   }
 
   public void setFilter(String filter) {
@@ -137,6 +201,7 @@ public class AnimatedCorporeaItemList {
           if (oldStack.getCount() != stack.getCount()) {
             aniStack.changeAmount(stack.getCount(), animationLength);
           }
+          aniStack.setFavorite(favoriteKeys.contains(new ItemKey(stack)));
           list.remove(i);
           found = true;
           break;
@@ -149,6 +214,9 @@ public class AnimatedCorporeaItemList {
 
     for (ItemStack stack : list) {
       AnimatedItemStack aniStack = new AnimatedItemStack(stack);
+      if (favoriteKeys.contains(new ItemKey(stack))) {
+        aniStack.setFavorite(true);
+      }
       if (!isFirstUpdate) {
         aniStack.fadeIn();
       }

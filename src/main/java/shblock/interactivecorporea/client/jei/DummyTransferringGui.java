@@ -5,44 +5,28 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
-import shblock.interactivecorporea.client.render.shader.SimpleShaderProgram;
 import shblock.interactivecorporea.client.requestinghalo.RequestingHaloInterfaceHandler;
 import shblock.interactivecorporea.client.util.RenderTick;
 
 import java.util.Objects;
 
-import static org.lwjgl.opengl.GL44.*;
-
 public class DummyTransferringGui extends AbstractContainerScreen<DummyTransferringContainer> {
-  private static final SimpleShaderProgram shader = new SimpleShaderProgram("jei_bg", Uniforms::init);
-
-  private static class Uniforms {
-    private static int TIME;
-    private static int EDGE;
-    private static int GUI_SCALE;
-
-    private static void init(SimpleShaderProgram shader) {
-      TIME = shader.getUniformLocation("time");
-      EDGE = shader.getUniformLocation("edge");
-      GUI_SCALE = shader.getUniformLocation("guiScale");
-    }
-  }
-
   private double openCloseProgress = 0;
   private boolean closing = false;
 
   public DummyTransferringGui() {
-    super(new DummyTransferringContainer(), Objects.requireNonNull(Minecraft.getInstance().player).getInventory(), Component.literal(""));
+    super(new DummyTransferringContainer(Objects.requireNonNull(Minecraft.getInstance().player).getInventory()), Minecraft.getInstance().player.getInventory(), Component.literal(""));
+    this.imageWidth = 0;
+    this.imageHeight = 0;
   }
 
-  private void updateGuiSize() {
-    width = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-    height = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-    double factor = 1 - (Math.cos(openCloseProgress * Math.PI) + 1) / 2;
-    leftPos = (int) (width / 3 * factor);
-    topPos = 0;
-    imageWidth = (int) (width - (width / 3 * factor) - leftPos);
-    imageHeight = height;
+  @Override
+  protected void init() {
+    super.init();
+    this.leftPos = 0;
+    this.topPos = 0;
+    this.imageWidth = 2 * this.width / 3;
+    this.imageHeight = this.height;
   }
 
   public void startClose() {
@@ -82,21 +66,12 @@ public class DummyTransferringGui extends AbstractContainerScreen<DummyTransferr
       }
     }
 
-    updateGuiSize();
-
-    shader.use();
-    glUniform1f(Uniforms.TIME, (float) (RenderTick.total / 20));
-    glUniform1f(Uniforms.GUI_SCALE, (float) Minecraft.getInstance().getWindow().getGuiScale());
-
-    glUniform1f(Uniforms.EDGE, leftPos);
-    gui.fill(0, 0, leftPos, height, 0);
-
-    glUniform1f(Uniforms.EDGE, leftPos + imageWidth);
-    gui.fill(leftPos + imageWidth, 0, width, height, 0);
-
-    shader.release();
+    super.render(gui, mouseX, mouseY, partialTicks);
   }
 
   @Override
   protected void renderBg(GuiGraphics gui, float partialTicks, int x, int y) { }
+
+  @Override
+  protected void renderLabels(GuiGraphics gui, int mouseX, int mouseY) { }
 }

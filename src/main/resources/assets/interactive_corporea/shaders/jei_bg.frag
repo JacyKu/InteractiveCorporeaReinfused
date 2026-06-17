@@ -1,12 +1,10 @@
-#version 440
+#version 150
 
 uniform float time;
 uniform float edge;
 uniform float guiScale;
 
-in vec4 gl_FragCoord;
-
-out vec4 color;
+out vec4 fragColor;
 
 #define PI 3.14159265358979323846
 
@@ -101,5 +99,5 @@ void main() {
     }
 
     float n = (cnoise(vec3(pos / 50.0, time)) + 1.0) / 2.0;
-    color = vec4(mix(COLOR_A, COLOR_B, n), .72);
+    fragColor = vec4(mix(COLOR_A, COLOR_B, n), .72);
 }

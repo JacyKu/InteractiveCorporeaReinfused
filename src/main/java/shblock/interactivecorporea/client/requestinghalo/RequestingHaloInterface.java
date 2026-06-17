@@ -13,6 +13,8 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.particles.DustParticleOptions;
@@ -43,11 +45,13 @@ import shblock.interactivecorporea.common.network.CPacketRequestItem;
 import shblock.interactivecorporea.common.network.CPacketRequestItemListUpdate;
 import shblock.interactivecorporea.common.util.CISlotPointer;
 import shblock.interactivecorporea.common.util.Ray3;
+import shblock.interactivecorporea.common.util.StackHelper;
 import shblock.interactivecorporea.common.util.Vec2d;
 import vazkii.botania.api.mana.ManaItemHandler;
 import vazkii.botania.common.core.helper.ItemNBTHelper;
 import vazkii.botania.common.core.helper.Vector3;
 import java.util.*;
+import java.util.function.Supplier;
 
 import static org.lwjgl.glfw.GLFW.*;
 
@@ -131,6 +135,16 @@ public class RequestingHaloInterface {
     searchBar.setUpdateCallback(this::updateSearch);
 
     itemList = new AnimatedCorporeaItemList(ItemNBTHelper.getInt(haloItem, PREFIX_LIST_HEIGHT, 5));
+    itemList.setFavoritesSupplier(() -> {
+      List<ItemStack> favs = new ArrayList<>(getFavorites());
+      Supplier<List<ItemStack>> ext = RequestingHaloInterfaceHandler.favoritesSupplier;
+      if (ext != null) {
+        List<ItemStack> extFavs = ext.get();
+        if (extFavs != null) favs.addAll(extFavs);
+      }
+      return favs;
+    });
+    itemList.showInitialFavorites();
 
     searchBar.setSearchString(ItemNBTHelper.getString(haloItem, PREFIX_SEARCH_STRING, ""));
     searchBar.moveToEnd();
@@ -853,6 +867,41 @@ public class RequestingHaloInterface {
     ItemNBTHelper.setString(haloItem, PREFIX_SEARCH_STRING, searchBar.getSearchString());
   }
 
+  private void toggleFavorite(ItemStack stack) {
+    List<ItemStack> favs = getFavorites();
+    for (int i = 0; i < favs.size(); i++) {
+      if (StackHelper.equalItemAndTag(stack, favs.get(i))) {
+        favs.remove(i);
+        saveFavorites(favs);
+        itemList.refreshFavorites();
+        return;
+      }
+    }
+    favs.add(stack.copy());
+    saveFavorites(favs);
+    itemList.refreshFavorites();
+  }
+
+  private List<ItemStack> getFavorites() {
+    List<ItemStack> favs = new ArrayList<>();
+    if (haloItem.hasTag()) {
+      ListTag list = haloItem.getTag().getList("ic_favorites", 10);
+      for (int i = 0; i < list.size(); i++) {
+        ItemStack s = ItemStack.of(list.getCompound(i));
+        if (!s.isEmpty()) favs.add(s);
+      }
+    }
+    return favs;
+  }
+
+  private void saveFavorites(List<ItemStack> favs) {
+    ListTag list = new ListTag();
+    for (ItemStack s : favs) {
+      list.add(s.save(new CompoundTag()));
+    }
+    haloItem.getOrCreateTag().put("ic_favorites", list);
+  }
+
   private boolean pickItem(boolean unpick) {
     if (unpick) {
       if (pickedItem == null) return false;
@@ -945,10 +994,19 @@ public class RequestingHaloInterface {
                 playSwingAnimation();
                 return true;
               }
+              if (pickedItem != null) {
+                return true;
+              }
             }
           }
           break;
         case GLFW_MOUSE_BUTTON_MIDDLE:
+          if (KeyboardHelper.hasControlDown()) {
+            if (selectionBox.getTarget() != null) {
+              toggleFavorite(selectionBox.getTarget().getStack());
+              return true;
+            }
+          }
           if (pickItem(KeyboardHelper.hasShiftDown()))
             return true;
           break;
@@ -1116,6 +1174,8 @@ public class RequestingHaloInterface {
   }
 
   public void handleUpdatePacket(List<ItemStack> newList) {
+    this.haloItem = craftingInterface.haloItemSlot.getStack(mc.player);
+    this.craftingInterface.haloStack = this.haloItem;
     if (drainManaOrClose(ModConfig.COMMON.requestingHaloUpdateConsumption.get())) {
       itemList.handleUpdatePacket(newList);
 

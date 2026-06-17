@@ -4,7 +4,7 @@ plugins {
     id 'net.neoforged.moddev.legacyforge' version '2.0.78'
 }
 
-version = '1.2.0-beta'
+version = '1.2.1-beta'
 group = 'shblock.interactivecorporea'
 
 base {
@@ -110,6 +110,10 @@ repositories {
             includeGroup 'maven.modrinth'
         }
     }
+    maven {
+        name = 'TerraformersMC'
+        url = 'https://maven.terraformersmc.com/'
+    }
 }
 
 dependencies {
@@ -118,6 +122,8 @@ dependencies {
 
     modCompileOnly("mezz.jei:jei-1.20.1-common-api:${jei_version}")
     modRuntimeOnly("mezz.jei:jei-1.20.1-forge:${jei_version}")
+
+    modCompileOnly("dev.emi:emi-forge:${emi_version}:api")
 
     modCompileOnly("top.theillusivec4.curios:curios-forge:${curios_version}:api")
     modRuntimeOnly("top.theillusivec4.curios:curios-forge:${curios_version}")

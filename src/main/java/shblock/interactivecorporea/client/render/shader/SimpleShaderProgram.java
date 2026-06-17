@@ -100,6 +100,10 @@ public class SimpleShaderProgram implements ResourceManagerReloadListener {
     }
   }
 
+  public boolean isLoaded() {
+    return program != 0;
+  }
+
   public int getUniformLocation(String name) {
     return glGetUniformLocation(program, name);
   }
